@@ -143,18 +143,7 @@ $(document).ready(function () {
         rowGroup: {
             dataSrc: 'project_name',
             startRender: function (rows, group) {
-                var hasFilter = [
-                    $('#IMEIFilter').val(),
-                    $('#ProjectFilter').val(),
-                    $('#ChangeProjectFilter').val(),
-                    $('#StatusFilter').val(),
-                    $('#CreatedByFilter').val(),
-                    $('#UpdatedByFilter').val(),
-                    $('#CreatedAtFilter').val(),
-                    $('#UpdatedAtFilter').val(),
-                    $('#MapDateTimeFilter').val(),
-                    $('#ChangeProjectDateFilter').val()
-                ].some(val => val);
+                var hasFilter = hasAnyFilter();
 
                 if (hasFilter) {
                     var count = rows.count();
@@ -166,6 +155,10 @@ $(document).ready(function () {
                             '<span>Project: ' + (group || 'No Project') + ' (' + count + ' items)</span> ' +
                             '<button class="toggle-btn" style="border:none; background:#e0e0e0; color:#333; width:24px; height:24px; border-radius:50%; font-weight:bold; font-size:14px; cursor:pointer;" data-group="' + group + '">' + icon + '</button>' +
                             '</td>');
+                }
+                else {
+                    // No filter => disable grouping
+                    table.rowGroup().disable();
                 }
             }
         },
@@ -305,7 +298,28 @@ $(document).ready(function () {
             fpageSize: pageInfo.length
         };
     }
-    
+    function hasAnyFilter() {
+        const filters = [
+            $('#IMEIFilter').val(),
+            $('#ProjectFilter').val(),
+            $('#ChangeProjectFilter').val(),
+            $('#StatusFilter').val(),
+            $('#CreatedByFilter').val(),
+            $('#UpdatedByFilter').val(),
+            $('#CreatedAtFilter').val(),
+            $('#UpdatedAtFilter').val(),
+            $('#MapDateTimeFilter').val(),
+            $('#ChangeProjectDateFilter').val()
+        ];
+
+        return filters.some(f => {
+            if (f == null) return false;         // null or undefined
+            if (Array.isArray(f) && f.length === 0) return false; // empty array
+            if (typeof f === 'string' && f.trim() === '') return false; // empty string
+            return true; // valid filter
+        });
+    }
+
 
     // Server-side export functions
     function exportToExcel(exportType) {
@@ -684,6 +698,19 @@ $(document).ready(function () {
     // Initialize Select2 Dropdowns
     
     function initIMEISearch_DDL(selector, type, isMultiple = false) {
+        const select = $(selector);
+
+        // Initialize Select2 only if not already initialized
+        if (!select.hasClass('select2-hidden-accessible')) {
+            select.select2({
+                placeholder: isMultiple ? "" : "Select " + type,
+                allowClear: true,
+                width: "100%",
+                multiple: isMultiple
+            });
+        }
+
+        // Populate options via AJAX
         $.ajax({
             url: imeiUrls.loadIMEISearchDDL,
             type: "GET",
@@ -691,26 +718,22 @@ $(document).ready(function () {
             data: { suggestionType: type },
             success: function (response) {
                 if (response.success && response.data) {
-                    const select = $(selector);
                     select.empty(); // clear existing options
 
-                    // Add a blank placeholder option only for single select
+                    // Only for single-select, add a blank placeholder option
                     if (!isMultiple) {
                         select.append(new Option("", "", false, false));
                     }
 
-                    // Populate options from response
+                    // Populate options
                     response.data.forEach(item => {
                         select.append(new Option(item.text, item.id, false, false));
                     });
 
-                    // Initialize Select2
-                    select.select2({
-                        placeholder: "Select " + type,
-                        allowClear: true,
-                        width: "100%",
-                        multiple: isMultiple
-                    });
+                    // For multi-select, clear selection (empty initially)
+                    if (isMultiple) {
+                        select.val(null).trigger('change');
+                    }
                 }
             },
             error: function () {
@@ -718,8 +741,6 @@ $(document).ready(function () {
             }
         });
     }
-
-    // List of filters
     const IMEIFilters = [
         { select: '#ProjectFilter', type: 'project', isMultiple: true },
         { select: '#ChangeProjectFilter', type: 'changeproject', isMultiple: false },
@@ -728,6 +749,7 @@ $(document).ready(function () {
         { select: '#UpdatedByFilter', type: 'updatedby', isMultiple: false }
     ];
 
-    // Initialize all filters
+    // Initialize filters
     IMEIFilters.forEach(f => initIMEISearch_DDL(f.select, f.type, f.isMultiple));
+
 });

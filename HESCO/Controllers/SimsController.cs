@@ -361,7 +361,7 @@ namespace HESCO.Controllers
             ExcelPackage.License.SetNonCommercialOrganization("Accurate");
 
             using var package = new ExcelPackage();
-            var worksheet = package.Workbook.Worksheets.Add("IMEI Data");
+            var worksheet = package.Workbook.Worksheets.Add("IMSI Data");
 
             // Header styling
             using (var headerRange = worksheet.Cells[1, 1, 1, 10])
@@ -386,40 +386,48 @@ namespace HESCO.Controllers
             worksheet.Cells[1, 10].Value = "Change Project Date";
 
             // Data
-            for (int i = 0; i < data.Count; i++)
+            if (data != null && data.Count > 0)
             {
-                var row = data[i];
-                var rowIndex = i + 2;
-
-                worksheet.Cells[rowIndex, 1].Value = row.imsi ?? "-";
-                worksheet.Cells[rowIndex, 2].Value = row.sim_number ?? "-";
-                worksheet.Cells[rowIndex, 3].Value = row.operator_name ?? "-";
-                worksheet.Cells[rowIndex, 4].Value = row.project_name ?? "-";
-                worksheet.Cells[rowIndex, 5].Value = row.change_project_name ?? "-";
-                worksheet.Cells[rowIndex, 6].Value = row.issued_to.ToString() ?? "-";
-                worksheet.Cells[rowIndex, 7].Value = row.created_by_username.ToString() ?? "-";
-                worksheet.Cells[rowIndex, 8].Value = FormatDateForExcel(row.created_at);
-                worksheet.Cells[rowIndex, 9].Value = FormatDateForExcel(row.map_datetime);
-                worksheet.Cells[rowIndex, 10].Value = FormatDateForExcel(row.change_project_id_at, true);
-
-                // Alternate row coloring
-                if (i % 2 == 0)
+                for (int i = 0; i < data.Count; i++)
                 {
-                    using var rowRange = worksheet.Cells[rowIndex, 1, rowIndex, 10];
-                    rowRange.Style.Fill.PatternType = ExcelFillStyle.Solid;
-                    rowRange.Style.Fill.BackgroundColor.SetColor(Color.LightGray);
+                    var row = data[i];
+                    var rowIndex = i + 2;
+
+                    worksheet.Cells[rowIndex, 1].Value = row.imsi ?? "-";
+                    worksheet.Cells[rowIndex, 2].Value = row.sim_number ?? "-";
+                    worksheet.Cells[rowIndex, 3].Value = row.operator_name ?? "-";
+                    worksheet.Cells[rowIndex, 4].Value = row.project_name ?? "-";
+                    worksheet.Cells[rowIndex, 5].Value = row.change_project_name ?? "-";
+                    worksheet.Cells[rowIndex, 6].Value = row.issued_to?.ToString() ?? "-";
+                    worksheet.Cells[rowIndex, 7].Value = row.created_by_username?.ToString() ?? "-";
+                    worksheet.Cells[rowIndex, 8].Value = FormatDateForExcel(row.created_at);
+                    worksheet.Cells[rowIndex, 9].Value = FormatDateForExcel(row.map_datetime);
+                    worksheet.Cells[rowIndex, 10].Value = FormatDateForExcel(row.change_project_id_at, true);
+
+                    // Alternate row coloring
+                    if (i % 2 == 0)
+                    {
+                        using var rowRange = worksheet.Cells[rowIndex, 1, rowIndex, 10];
+                        rowRange.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                        rowRange.Style.Fill.BackgroundColor.SetColor(Color.LightGray);
+                    }
                 }
+
+                // Auto-fit columns
+                worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
+
+                // Add borders to all cells
+                using var dataRange = worksheet.Cells[1, 1, data.Count + 1, 10];
+                dataRange.Style.Border.Top.Style = ExcelBorderStyle.Thin;
+                dataRange.Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
+                dataRange.Style.Border.Left.Style = ExcelBorderStyle.Thin;
+                dataRange.Style.Border.Right.Style = ExcelBorderStyle.Thin;
             }
-
-            // Auto-fit columns
-            worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
-
-            // Add borders to all cells
-            using var dataRange = worksheet.Cells[1, 1, data.Count + 1, 10];
-            dataRange.Style.Border.Top.Style = ExcelBorderStyle.Thin;
-            dataRange.Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
-            dataRange.Style.Border.Left.Style = ExcelBorderStyle.Thin;
-            dataRange.Style.Border.Right.Style = ExcelBorderStyle.Thin;
+            else
+            {
+                // Handle empty data gracefully
+                worksheet.Cells[2, 1].Value = "No data available";
+            }
 
             return package.GetAsByteArray();
         }
@@ -634,6 +642,7 @@ namespace HESCO.Controllers
                 return BadRequest($"An error occurred: {ex.Message}");
             }
         }
+        [HttpPost]
         public async Task<IActionResult> ImportIMEI(IMEIData imeiData, IFormFile file)
         {
             try
@@ -1040,7 +1049,6 @@ namespace HESCO.Controllers
             }
         }
         #endregion
-
 
     }
 }
