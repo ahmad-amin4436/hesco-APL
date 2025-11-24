@@ -1,0 +1,126 @@
+﻿@model HESCO.Models.MeterData
+@{
+    ViewData["Title"] = "Upload Meter Excel";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-sm-10">
+            <div class="card" style="background-color:blanchedalmond">
+                <div class="card-body p-3">
+                    <h1 style="text-align:center">Upload Meters</h1>
+                    <div class="form-group mt-2">
+                        <a href="@Url.Action("DownloadTemplate", "Meter")" class=" btn btn-dark">Download Template</a>
+                    </div>
+                    <div id="waitMessage" class="alert alert-info text-center" style="display: none;">
+                        <div class="spinner-border text-primary" role="status" style="margin-right:10px;"></div>
+                        Please wait... Records are uploading
+                    </div>
+                    <div id="formContainer">
+                        <form id="uploadForm" asp-action="UploadMeterExcel" method="post" enctype="multipart/form-data">
+                            <div class="form-group">
+                                <label for="file">Upload Excel File</label>
+                                <input type="file" name="file" class="form-control" required/>
+                            </div>
+                            <div class="form-group">
+                                <label asp-for="Project" class="control-label"></label>
+                                <select asp-for="Project" class="form-control" asp-items="ViewBag.SelectProject" required>
+                                    <option value="">Select a Project</option>
+                                </select>
+                                <span asp-validation-for="Project" class="text-danger"></span>
+                            </div>
+                            <div class="form-group" id="MeterType_ddl">
+                                <label class="control-label">Meter Type</label>
+                                <select id="MeterType" name="MeterType" class="form-control"></select>
+                                <span id="MeterModel_alter" class="text-danger"></span>
+                            </div>
+                            <div class="form-group" id="MeterModeContainer">
+                                <label class="control-label">Meter Mode</label>
+                                <input id="MeterModeInput" name="MeterMode" class="form-control" readonly />
+                            </div>
+
+
+                            <div class="form-group mt-2">
+                                <input type="submit" value="Import" class="btn btn-primary" />
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div>
+        <a href="@Url.Action("ViewMeterList", "Meter")" class="btn btn-success">Back to List</a>
+    </div>
+</div>
+@section Scripts {
+    <script>
+        $("#MeterType_ddl").hide();
+        document.getElementById("uploadForm").addEventListener("submit", function () {
+            // Hide the form content
+            document.getElementById("formContainer").style.display = "none";
+
+            // Show the wait message
+            document.getElementById("waitMessage").style.display = "block";
+        });
+                // Initially hide
+        $("#MeterType_ddl").hide();
+        $("#MeterModeContainer").hide();
+
+        $("#Project").on("change", function () {
+
+            var projectId = $(this).val();
+
+            if (!projectId) {
+                $("#MeterType_ddl").hide();
+                $("#MeterType").removeAttr("required");
+                $("#MeterType").html('<option value="" selected disabled>Select Meter Model</option>');
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("GetMeterModel", "Meter")',
+                type: 'GET',
+                data: { projectId: projectId },
+                success: function (response) {
+                     debugger;
+                    if (!response.success) {
+                        $("#MeterType_ddl").hide();
+                        $("#MeterType").removeAttr("required");
+                        $("#MeterModeInput").val("AMI");
+                        return;
+                    }
+
+                    // AMI → hide dropdown
+                    if (response.meterMode == 2) {
+                        $("#MeterType_ddl").hide();
+                        $("#MeterType").removeAttr("required");
+                        
+                        return;
+                    }
+
+                    // Conventional → show dropdown
+                    $("#MeterModeInput").val("Conventional");
+
+                    $("#MeterType_ddl").show();
+                    $("#MeterType").attr("required", "required");
+                    $("#MeterType").empty()
+                        .append('<option value="" selected disabled>Select Meter Model</option>');
+
+                    $.each(response.models, function (i, item) {
+                        $("#MeterType").append(
+                            `<option value="${item.text}">${item.text}</option>`
+                        );
+                    });
+                },
+                error: function () {
+                    $("#MeterType_ddl").hide();
+                    $("#MeterType").removeAttr("required");
+                    alert("Failed to load meter models.");
+                }
+            });
+        });
+
+
+    </script>
+}

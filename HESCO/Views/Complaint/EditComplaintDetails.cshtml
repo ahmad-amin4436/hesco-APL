@@ -1,0 +1,716 @@
+﻿ @model HESCO.Models.Complaint.ComplaintEditViewModel
+
+@{
+    ViewData["Title"] = "Edit Complaint";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var signedInUserId = ViewBag.SignedInUserId;
+    string frefno = ViewData["FRefNo"]?.ToString() ?? "";
+    string fmsn = ViewData["FMSN"]?.ToString() ?? "";
+    string fat = ViewData["FAT"]?.ToString() ?? "";
+    string fsdn = ViewData["FSDN"]?.ToString() ?? "";
+    string fissueDescription = ViewData["IssueDescription"]?.ToString() ?? "";
+    string fopenDescription = ViewData["openDescription"]?.ToString() ?? "";
+    string fStatus = ViewData["Status"]?.ToString() ?? "";
+    string fisFaulty = ViewData["IsFaulty"]?.ToString() ?? "";
+    int page = int.Parse(ViewData["page"]?.ToString() ?? "1");
+    int pageSize = int.Parse(ViewData["pageSize"]?.ToString() ?? "1");
+    var isFieldStaff = ((List<int>)ViewBag.FieldStaffList).Contains((signedInUserId));
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-sm-10">
+            <div class="card" style="background-color:blanchedalmond">
+                <div class="card-body p-3">
+                    <h1 style="text-align:center">Edit Complaint</h1>
+                    <form asp-action="EditComplaintDetails" method="post" id="editComplaintForm" enctype="multipart/form-data">
+                        <input type="hidden" name="frefno" value="@frefno" />
+                        <input type="hidden" name="fmsn" value="@fmsn" />
+                        <input type="hidden" name="fat" value="@fat" />
+                        <input type="hidden" name="fsdn" value="@fsdn" />
+                        <input type="hidden" name="fissueDescription" value="@fissueDescription" />
+                        <input type="hidden" name="fopenDescription" value="@fopenDescription" />
+                        <input type="hidden" name="fstatus" value="@fStatus" />
+                        <input type="hidden" name="fisFaulty" value="@fisFaulty" /> 
+                        <input type="hidden" name="fpage" value="1" />
+                        <input type="hidden" name="fpageSize" value="@pageSize" />
+                        <input type="hidden" name="fcreatedDate" value="@ViewBag.fCreatedDate" />
+                        <input type="hidden" name="fcloseDate" value="@ViewBag.fCloseDate" />
+                        <input type="hidden" name="fexecutedDateRange" value="@ViewBag.fExecutedDateRange" />
+                        @*  <form asp-action="EditComplaintDetails" method="post" id="editComplaintForm"> *@
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                        <div class="form-group">
+                            <label asp-for="Reference_No" class="control-label"></label>
+                            <input asp-for="Reference_No" class="form-control" readonly />
+                            <span asp-validation-for="Reference_No" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label asp-for="MSN" class="control-label"></label>
+                            <input asp-for="MSN" class="form-control" readonly />
+                            <span asp-validation-for="MSN" class="text-danger"></span>
+                        </div>
+                        <input asp-for="SubDiv" type="hidden" name="SubDivisionCode" id="SubDivisionCode" />
+                        <input asp-for="SubDivName" type="hidden" name="SubDivisionName" id="SubDivisionName" />
+                        <div class="form-group">
+                            <label class="control-label">Sub Division</label>
+                            <input asp-for= "SubDivisionDisplay"  type="text" class="form-control" id="SubDivisionDisplay" readonly />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Open_Description" class="control-label"></label>
+                            <input asp-for="Open_Description" class="form-control" readonly />
+                            <span asp-validation-for="Open_Description" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group" id="closeDescriptionWrapper">
+                            <label asp-for="Closed_Description" class="control-label"></label>
+                            <input asp-for="Closed_Description" class="form-control" />
+                            <span asp-validation-for="Closed_Description" class="text-danger"></span>
+                        </div>
+
+                               <div class="form-group" id="executedDescriptionWrapper">
+                            <label asp-for="Executed_Description" class="control-label"></label>
+                            <select asp-for="Executed_Description" class="form-control" id="executedDescriptionDropdown">
+                                <option value="">Select Description</option>
+                                @foreach (var description in (SelectList)ViewBag.DescriptionList)
+                                {
+                                    <option value="@description.Value" data-id="@description.Value">@description.Text</option>
+                                }
+                                <option value="other" data-id="other">Other</option>
+                            </select>
+
+                            <!-- Other description input -->
+                            @* <input type="text" id="executedDescriptionOther" name="OtherExecutedDescription" class="form-control mt-2" style="display:none;" placeholder="Enter other description" /> *@
+
+                            <!-- Conditional SIM inputs -->
+                            <div id="simFields" style="display: none;">
+                                <div class="row mt-2">
+                                    <!-- Old IMSI Input -->
+                                    <div class="col-md-6">
+                                        <label for="old_imsi" class="form-label">Old IMSI</label>
+                                        <input type="text" id="old_imsi" name="old_imsi" class="form-control"
+                                               placeholder="Enter Old IMSI" minlength="18" maxlength="21"
+                                               oninput="validateIMSI(this)"
+                                               title="Must be 18-21 characters long. If a letter is present, only one is allowed." />
+                                    </div>
+
+                                    <!-- Old Telco Dropdown -->
+                                    <div class="col-md-6">
+                                        <label for="old_telcoSelect" class="form-label">Old Telco</label>
+                                        <select id="old_telcoSelect" name="telco_old" class="form-control">
+                                            <option value="">Select Telco</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-2">
+                                    <!-- New IMSI Input -->
+                                    <div class="col-md-6">
+                                        <label for="new_imsi" class="form-label">New IMSI</label>
+                                        <input type="text" id="new_imsi" name="new_imsi" class="form-control"
+                                               placeholder="Enter New IMSI" minlength="18" maxlength="21"
+                                               oninput="validateIMSI(this)"
+                                               title="Must be 18-21 characters long. If a letter is present, only one is allowed." />
+                                    </div>
+
+                                    <!-- New Telco Dropdown -->
+                                    <div class="col-md-6">
+                                        <label for="new_telcoSelect" class="form-label">New Telco</label>
+                                        <select id="new_telcoSelect" name="telco_new" class="form-control">
+                                            <option value="">Select Telco</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <span asp-validation-for="Executed_Description" class="text-danger"></span>
+                        </div>
+
+                        @*  <div class="form-group" id="executedDescriptionWrapper">
+                        <label asp-for="Executed_Description" class="control-label"></label>
+                        <div id="executedDescriptionList">
+                        <input asp-for="Executed_Description" class="form-control" name="ExecutedDescriptions[]" />
+                        </div>
+                        <button type="button" id="confirm-executedDescription-btn" class="btn btn-success">+</button>
+                        <button type="button" id="cancel-executedDescription-btn" class="btn btn-danger">✘</button>
+                        <span asp-validation-for="Executed_Description" class="text-danger"></span>
+                        </div> *@
+
+                        <div class="form-group">
+                            <label asp-for="AssignedTo" class="control-label"></label>
+                            <select asp-for="AssignedTo" class="form-control" id="assignedToDropdown" asp-items="ViewBag.AssignToList">
+                                <option value="">Select AssignedTo</option>
+                            </select>
+                            <input type="hidden" id="assignedToHidden" name="AssignedTo" value="" />
+                            <span asp-validation-for="AssignedTo" class="text-danger"></span>
+                        </div>
+                        @*  <div class="form-group">
+                        <label asp-for="AssignedTo" class="control-label"></label>
+                        <select asp-for="AssignedTo" class="form-control" id="assignedToDropdown" asp-items="ViewBag.AssignToList">
+                        <option value="">Select AssignedTo</option>
+                        </select>
+                        <span asp-validation-for="AssignedTo" class="text-danger"></span>
+                        </div> *@
+
+                        <div class="form-group">
+                            <label asp-for="Status" class="control-label"></label>
+                            <select asp-for="Status" class="form-control" id="statusDropdown">
+                                <option value="0">Open</option>
+                                <option value="1">Executed</option>
+                                <option value="2">Reinstalled/Replaced</option>
+                                @if (!((List<int>)ViewBag.FieldStaffList).Contains(ViewBag.SignedInUserId))
+                                {
+                                    <option value="3">Close</option>
+                                    <option value="4">Mute</option>
+                                    <option value="5">To be check</option>
+                                }
+                                <option value="6">To be Removed</option>
+                                <option value="7">Removed from site</option>
+                                <option value="8">Returned to Subdivision</option>
+                                <option value="9">Not Under Warranty</option>
+                                <option value="10">With Sub-Division</option>
+                                <option value="11">Under Warranty</option>
+                            </select>
+                            <span asp-validation-for="Status" class="text-danger"></span>
+                        </div>
+                   @*      <div class="form-group" id="newMsnContainer" style="display:none;">
+                            <label for="NewMSN" class="control-label">New MSN</label>
+                            <input type="text" asp-for="NewMSN" class="form-control" id="NewMSN" />
+                            <span asp-validation-for="NewMSN" class="text-danger"></span>
+                        </div> *@
+                        <div class="form-group" id="newMsnContainer" style="display:none;">
+                            <label for="NewMSN" class="control-label">New MSN</label>
+                            <input type="text" asp-for="NewMSN" class="form-control" id="NewMSN" maxlength="10" pattern="\d{10}" />
+                            <span asp-validation-for="NewMSN" class="text-danger"></span>
+                        </div>
+                        <!-- Remarks Section -->
+                        <div class="form-group" id="remarks-section">
+                            <label asp-for="Remarks" class="control-label"></label>
+
+                            @if (string.IsNullOrWhiteSpace(Model.Remarks))
+                            {
+                                <!-- Editable input when Remarks is null/empty -->
+                                <input type="text" name="Remarks" id="editableRemarks" class="form-control mb-2" placeholder="Enter remark" />
+                            }
+                            else
+                            {
+                                <!-- Display-only textbox for user feedback -->
+                                <input type="text" id="readonlyRemarks" class="form-control mb-2" readonly
+                                       value="@Model.Remarks" />
+
+                                <!-- Hidden input that will be submitted with the form -->
+                                <input type="hidden" name="Remarks" id="remarksHiddenInput" value="@Model.Remarks" />
+
+                                <!-- Add remark button -->
+                                <button type="button" class="btn btn-secondary mb-2" id="addRemarkBtn">+</button>
+
+                                <!-- Hidden input area for entering new remarks -->
+                                <div id="newRemarkDiv" class="d-none">
+                                    <input type="text" id="newRemarkInput" class="form-control mb-2" placeholder="Enter remark" />
+                                    <button type="button" class="btn btn-success" id="saveRemarkBtn">&#10004;</button>
+                                    <button type="button" class="btn btn-danger" id="cancelRemarkBtn">&#10006;</button>
+                                </div>
+                            }
+                        </div>
+                         <div class="form-group">
+                            <label class="control-label">Location URL</label>
+                            <input asp-for="URL" class="form-control" />
+                            <span asp-validation-for="URL" class="text-danger"></span>
+                        </div>
+                        @*  <div class="form-group">
+                        <label asp-for="IsFaulty" class="control-label"></label>
+                        <select asp-for="IsFaulty" class="form-control" id="IsFaultyDropdown" required>
+                        <option value="0">No</option>
+                        <option value="1">Yes</option>
+                        </select>
+                        <span asp-validation-for="IsFaulty" class="text-danger"></span>
+                        </div> *@
+                        <!-- Hide Priority checkbox for field staff -->
+                        @if (!((List<int>)ViewBag.FieldStaffList).Contains(ViewBag.SignedInUserId))
+                        {
+                            <div class="form-group">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" id="Priority" name="Priority" value="1" @(Model.Priority == 1 ? "checked" : "") />
+                                    <label class="form-check-label" for="Priority">Priority</label>
+                                </div>
+                                <span asp-validation-for="Priority" class="text-danger"></span>
+                            </div>
+                        }
+                        <div class="form-group">
+                            <label for="ComplaintImages">Attach Photos</label>
+                            <input type="file" name="ComplaintImages" id="ComplaintImages" multiple class="form-control"
+                                   accept=".png,.jpeg,.jpg,.pdf,.doc,.docx,.xls,.xlsx,.xml"/>
+                            <small class="form-text text-muted">You can upload up to 10 files.  Allowed formats: PNG, JPEG, JPG, PDF, DOC, DOCX, XLS, XLXS,XML.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <input type="submit" id="complaintformbtn" value="Save" class="btn btn-primary" />
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div>
+        <a href="@Url.Action("ViewComplaint", "Complaint", new {
+ frefno = ViewData["FRefNo"],
+                        fmsn = ViewData["FMSN"],
+                        fat = ViewData["FAT"],
+fsdn = ViewData["FSDN"],
+                        fissueDescription = ViewData["IssueDescription"],
+                        fstatus = ViewData["Status"],
+                        fisFaulty = ViewData["IsFaulty"],
+                        fcreatedDate = ViewData["CreatedDate"],
+                        fcloseDate = ViewData["CloseDate"],
+                        fexecuteddateRange = ViewData["ExecutedDateRange"],
+                        fpage = ViewData["page"],
+                        fpageSize=ViewData["pageSize"]
+                    })" class="btn btn-success">Back to List</a>
+    </div>
+</div>
+
+<!-- Modal for Faulty Meter Details -->
+<div class="modal fade" id="FaultyMeterModal" tabindex="-1" role="dialog" aria-labelledby="FaultyMeterModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="FaultyMeterModalLabel">Faulty Meter Details</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="FaultyMeterForm">
+                    <div class="form-group">
+                        <label for="FaultyMSN">MSN</label>
+                        <input type="text" id="FaultyMSN" name="MSN" class="form-control" readonly />
+                    </div>                   
+                    <div class="form-group">
+                        <label for="FaultyOpenDescription">Open Description</label>
+                        <textarea id="FaultyOpenDescription" name="OpenDescription" class="form-control"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <div class="form-check">
+                            <input type="hidden" name="DataReset" value="0" />
+                            <input type="checkbox" class="form-check-input" id="FaultyDataReset" name="DataReset" value="1" @(Model.DataReset == 1 ? "checked" : "") />
+                            <label class="form-check-label" for="FaultyDataReset">Data Reset</label>
+                        </div>
+                    </div>
+                    <input type="hidden" name="ComplaintId" id="ComplaintId" />
+                    <button type="button" id="saveFaultyMeter" class="btn btn-primary">Save Faulty Details</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+                document.addEventListener("DOMContentLoaded", function () {
+          const code = document.getElementById("SubDivisionCode").value;
+          const name = document.getElementById("SubDivisionName").value;
+          const display = document.getElementById("SubDivisionDisplay");
+
+          if (code && name) {
+            display.value = `${code}-${name}`;
+          }
+        });
+           const OLD_IMSI_FROM_MODEL = '@Model.Old_Imsi';
+        const NEW_IMSI_FROM_MODEL = '@Model.New_Imsi';
+        const TELCO_OLD_FROM_MODEL = '@Model.Telco_Old';
+        const TELCO_NEW_FROM_MODEL = '@Model.Telco_New';
+        const EXECUTED_DESCRIPTION_ID = '@Model.Executed_Description'; // e.g. 12
+
+        $(document).ready(function () {
+            loadTelcos('#old_telcoSelect', TELCO_OLD_FROM_MODEL);
+            loadTelcos('#new_telcoSelect', TELCO_NEW_FROM_MODEL);
+
+            // Check description dropdown and model data on page load
+            handleSimFieldDisplay();
+
+            // Bind change event to dropdown
+            $('#executedDescriptionDropdown').on('change', function () {
+                handleSimFieldDisplay();
+            });
+        });
+
+        function loadTelcos(selectId, selectedText) {
+            $.ajax({
+                url: '/Complaint/GetTelcos',
+                type: 'GET',
+                data: { query: '' },
+                success: function (data) {
+                    const $dropdown = $(selectId);
+                    $dropdown.empty();
+                    $dropdown.append('<option value="">Select Telco</option>');
+
+                    data.forEach(function (item) {
+                        const isSelected = selectedText && item.text.trim() === selectedText.trim();
+                        $dropdown.append(
+                            $('<option></option>')
+                                .val(item.value)
+                                .text(item.text)
+                                .prop('selected', isSelected)
+                        );
+                    });
+                },
+                error: function (xhr) {
+                    console.error("Error loading telcos:", xhr.responseText);
+                }
+            });
+        }
+
+               function handleSimFieldDisplay() {
+            const dropdown = document.getElementById("executedDescriptionDropdown");
+            const simFields = document.getElementById("simFields");
+            const oldSim = document.getElementById("old_imsi");
+            const newSim = document.getElementById("new_imsi");
+              const telcoold = document.getElementById("old_telcoSelect");
+            const telconew = document.getElementById("new_telcoSelect");
+
+            const selectedId = dropdown.value;
+            const selectedText = dropdown.options[dropdown.selectedIndex]?.text?.trim();
+
+            // Show SIM fields only if selected status is "Communication issue - SIM Replaced"
+            const showSimFields = selectedId === "12" && selectedText === "Communication issue - SIM Replaced";
+
+            if (showSimFields) {
+                simFields.style.display = "block";
+
+                // Populate fields only if they are empty
+                if (!oldSim.value) oldSim.value = OLD_IMSI_FROM_MODEL || "";
+                if (!newSim.value) newSim.value = NEW_IMSI_FROM_MODEL || "";
+
+                oldSim.required = true;
+                newSim.required = true;
+                   telcoold.required = true;
+                 telconew.required = true;
+            } else {
+                simFields.style.display = "none";
+
+                // Clear all related fields
+                oldSim.required = false;
+                newSim.required = false;
+                
+                //$('#old_telcoSelect, #new_telcoSelect').val('');
+            }
+        }
+
+        function validateIMSI(input) {
+            const value = input.value;
+            const letterMatches = value.match(/[A-Za-z]/g);
+            const hasInvalidChars = /[^A-Za-z0-9]/.test(value);
+            const isCorrectLength = value.length >= 18 && value.length <= 21;
+            const letterCount = letterMatches ? letterMatches.length : 0;
+
+            if (!isCorrectLength) {
+                input.setCustomValidity("Length must be between 18 and 21 characters.");
+            } else if (hasInvalidChars) {
+                input.setCustomValidity("Only letters and digits are allowed.");
+            } else if (letterCount > 1) {
+                input.setCustomValidity("Only one alphabet character is allowed.");
+            } else {
+                input.setCustomValidity(""); // ✅ Valid input
+            }
+        }
+        $(document).ready(function () {
+            // Function to handle executed description input visibility
+            function handleExecutedDescriptionInput() {
+                var selectedValue = $("#executedDescriptionDropdown").val();
+                if (selectedValue === "other") {
+                    $("#executedDescriptionOther").show();
+                    console.log('shown');
+                } else {
+                    $("#executedDescriptionOther").hide();
+                }
+            }
+            //Set the selected value in hidden input
+            $('#editComplaintForm').submit(function () {
+                var selectedValue = $("#executedDescriptionDropdown").val();
+                if (selectedValue === "other") {
+                    var otherDescription = $("#executedDescriptionOther").val();
+                    if (otherDescription.trim() !== "") {
+                        $("#executedDescriptionDropdown").val(otherDescription);
+                    } else {
+                        alert('Please enter a description if you select "Other".');
+                        return false;
+                    }
+                }
+            });
+
+            $("#statusDropdown").change(function () {
+                var status = $(this).val();
+                if (status == "7") {
+                    var msn = $("#MSN").val();
+                    $("#FaultyMSN").val(msn);
+                    $("#ComplaintId").val(@Model.Id);
+
+                    // Fetch SubDivCode based on MSN using AJAX
+                    $.ajax({
+                        url: '@Url.Action("GetSubDivCode", "Complaint")',
+                        type: 'GET',
+                        data: { msn: msn },
+                        success: function (data) {
+                            if (data && data.subDivCode) {
+                                $("#FaultySubDivCode").val(data.subDivCode);
+                            } else {
+                                $("#FaultySubDivCode").val("N/A");
+                            }
+                        },
+                        error: function () {
+                            $("#FaultySubDivCode").val("Error fetching SubDivCode");
+                        }
+                    });
+
+                    $("#FaultyMeterModal").modal('show');
+                }
+            });
+
+            // Save faulty meter details and then submit the main form
+            $("#saveFaultyMeter").click(function () {
+                var openDescription = $("#FaultyOpenDescription").val();
+
+                if (!openDescription.trim()) {
+                    alert("Open Description is required."); // Display error message
+                    $("#FaultyOpenDescription").focus(); // Focus the field for user input
+                    return; // Stop the execution
+                }
+
+                var formData = {
+                    MSN: $("#FaultyMSN").val(),
+                    OpenDescription: openDescription,
+                    DataReset: $("#FaultyDataReset").is(":checked") ? "1" : "0",
+                    ComplaintId: $("#ComplaintId").val()
+                };
+
+                $.ajax({
+                    url: '@Url.Action("SaveFaultyMeterDetails", "Complaint")',
+                    type: 'POST',
+                    data: formData,
+                    success: function (response) {
+                        if (response.success) {
+                            window.location.href = response.redirectUrl;
+                        } else {
+                            alert(response.message || "An error occurred while saving details.");
+                        }
+                    },
+                    error: function () {
+                        alert("Error while saving faulty meter details.");
+                    }
+                });
+            });
+
+            // $("#saveFaultyMeter").click(function () {
+            //     var formData = {
+            //         MSN: $("#FaultyMSN").val(),
+            //         SubDivCode: $("#FaultySubDivCode").val(),
+            //         OpenDescription: $("#FaultyOpenDescription").val(),
+            //         DataReset: $("#FaultyDataReset").is(":checked") ? "1" : "0",
+            //         ComplaintId: $("#ComplaintId").val()
+            //     };
+
+            //     $.ajax({
+            //         url: '@Url.Action("SaveFaultyMeterDetails", "Complaint")',
+            //         type: 'POST',
+            //         data: formData,
+            //         success: function (response) {
+            //             if (response.success) {
+            //                 // Redirect to the main list view
+            //                 window.location.href = response.redirectUrl;
+            //             } else {
+            //                 alert(response.message || "An error occurred while saving details.");
+            //             }
+            //         },
+            //         error: function () {
+            //             alert("Error while saving faulty meter details.");
+            //         }
+            //     });
+            // });
+
+            // $("#saveFaultyMeter").click(function () {
+            //     var formData = {
+            //         MSN: $("#FaultyMSN").val(),
+            //         SubDivCode: $("#FaultySubDivCode").val(),
+            //         OpenDescription: $("#FaultyOpenDescription").val(),
+            //         DataReset: $("#FaultyDataReset").is(":checked") ? "1" : "0",
+            //         ComplaintId: $("#ComplaintId").val()
+            //     };
+
+            //     $.ajax({
+            //         url: '@Url.Action("SaveFaultyMeterDetails", "Complaint")',
+            //         type: 'POST',
+            //         data: formData,
+            //         success: function (data) {
+            //             $("#FaultyMeterModal").modal('hide');
+            //             $("#editComplaintForm").submit(); // Submit the main form
+            //         },
+            //         error: function () {
+            //             alert("Error saving faulty meter details.");
+            //         }
+            //     });
+            // });
+
+
+            // document.getElementById('statusDropdown').addEventListener('change', function () {
+            //     var newMsnContainer = document.getElementById('newMsnContainer');
+            //     if (this.value === '2') { // Check if the selected value is 2
+            //         newMsnContainer.style.display = 'block'; // Show the input field
+            //     } else {
+            //         newMsnContainer.style.display = 'none'; // Hide the input field
+            //     }
+            // });
+            document.getElementById('statusDropdown').addEventListener('change', function () {
+                var newMsnContainer = document.getElementById('newMsnContainer');
+                var newMsnInput = document.getElementById('NewMSN');
+
+                    
+                if (this.value === '2') {
+                    newMsnContainer.style.display = 'block';
+                    newMsnInput.setAttribute('required', 'true'); // Make it required
+                } else {
+                    newMsnContainer.style.display = 'none';
+                    newMsnInput.removeAttribute('required'); // Remove required when hidden
+                    newMsnInput.value = ''; // Clear input when hidden
+                }
+             
+            });
+
+            // Allow only numbers and restrict input to 10 digits
+            document.getElementById('NewMSN').addEventListener('input', function () {
+                this.value = this.value.replace(/\D/g, '').substring(0, 10); // Remove non-digits & limit to 10 chars
+            });
+            // Show/Hide Closed_Description and Executed_Description based on Status
+            function toggleDescriptionFields() {
+                var status = $("#statusDropdown").val();
+                if (status == "3") {
+                    $("#closeDescriptionWrapper").show();
+                    $("#executedDescriptionWrapper").hide();
+                    $('#executedDescriptionDropdown').removeAttr('required');
+                } else if (status == 1 || status == 6 || status == 7) {
+                    $("#closeDescriptionWrapper").hide();
+                    $("#executedDescriptionWrapper").show();
+                    $('#executedDescriptionDropdown').attr('required', true);
+                } else {
+                    $("#closeDescriptionWrapper").hide();
+                    $("#executedDescriptionWrapper").hide();
+                    $('#executedDescriptionDropdown').removeAttr('required');
+                }
+                handleExecutedDescriptionInput(); // Ensure the executed description field is correctly toggled
+            }
+            // Initial check and event binding
+            toggleDescriptionFields();
+            $("#statusDropdown").change(function () {
+                toggleDescriptionFields();
+            });
+            $("#executedDescriptionDropdown").change(function () {
+                handleExecutedDescriptionInput();
+            });
+
+                  // Show new remark input field
+        $("#addRemarkBtn").click(function () {
+            $("#newRemarkDiv").removeClass("d-none");
+            $("#newRemarkInput").focus();
+        });
+
+        // Cancel adding remark
+        $("#cancelRemarkBtn").click(function () {
+            $("#newRemarkInput").val('');
+            $("#newRemarkDiv").addClass("d-none");
+        });
+
+        // Append new remark to hidden field and visible field
+        $("#saveRemarkBtn").click(function () {
+            const newRemark = $("#newRemarkInput").val().trim();
+
+            if (newRemark !== "") {
+                let currentRemarks = $("#remarksHiddenInput").val();
+                let updatedRemarks = currentRemarks ? currentRemarks + ", " + newRemark : newRemark;
+
+                // Update the hidden input and readonly field
+                $("#remarksHiddenInput").val(updatedRemarks);
+                $("#readonlyRemarks").val(updatedRemarks);
+
+                // Clear and hide input field
+                $("#newRemarkInput").val('');
+                $("#newRemarkDiv").addClass("d-none");
+            }
+        });
+            // // Add new Executed Description field on button click
+            // $("#confirm-executedDescription-btn").click(function () {
+            //     $("#executedDescriptionList").append('<input type="text" name="ExecutedDescriptions[]" class="form-control mt-2" />');
+            // });
+
+            // // Confirm button click handler
+            // $("#confirm-executedDescription-btn").click(function () {
+            //     var newDescription = $("#executedDescriptionList input[name='ExecutedDescriptions[]']").last().val().trim();
+            //     var existingDescription = $("#executedDescriptionList input[name='ExecutedDescriptions[]']").first().val().trim();
+            //     if (newDescription !== "") {
+            //         var combinedDescription = existingDescription + (existingDescription ? "; " : "") + newDescription;
+            //         $("#executedDescriptionList input[name='ExecutedDescriptions[]']").first().val(combinedDescription);
+            //         $("#executedDescriptionList input[name='ExecutedDescriptions[]']").last().remove(); // Remove the new input field
+            //         toggleExecutedDescriptionField(); // Update field to readonly if necessary
+            //     }
+            // });
+
+            // // Cancel button click handler
+            // $("#cancel-executedDescription-btn").click(function () {
+            //     $("#executedDescriptionList input[name='ExecutedDescriptions[]']").last().remove(); // Remove the new input field
+            //     toggleExecutedDescriptionField(); // Update field to readonly if necessary
+            // });
+            var signedInUserId = @signedInUserId;
+            $("#assignedToDropdown option").each(function () {
+                if ($(this).val() == signedInUserId) {
+                    var selectedValue = $("#assignedToDropdown").val();
+                    console.log(selectedValue);
+                    $("#assignedToDropdown").prop("disabled", true);
+                    $("#assignedToHidden").val(selectedValue); // Store the value in the hidden field
+                }
+            });
+
+            // Update hidden field value when dropdown value changes (if dropdown is not disabled)
+            $("#assignedToDropdown").on('change', function () {
+                if (!$(this).prop('disabled')) {
+                    $("#assignedToHidden").val($(this).val());
+                }
+            });
+            $('#ComplaintImages').on('change', function () {
+                const maxFiles = 10;
+                const allowedExtensions = ['.png', '.jpeg', '.jpg', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.xml'];
+                const files = this.files;
+                let isValid = true;
+                let errorMsg = '';
+
+                if (files.length > maxFiles) {
+                    errorMsg = 'You can only upload a maximum of 10 files.';
+                    isValid = false;
+                }
+
+                for (let i = 0; i < files.length; i++) {
+                    const fileExtension = '.' + files[i].name.split('.').pop().toLowerCase(); // Add '.' before the extension
+                    if ($.inArray(fileExtension, allowedExtensions) === -1) {
+                        errorMsg = 'Invalid file type. Allowed formats: PNG, JPEG, JPG, PDF, DOC, DOCX, XLS, XLSX,XML.';
+                        isValid = false;
+                        break;
+                    }
+                }
+
+                if (!isValid) {
+                    alert(errorMsg);
+                    this.value = ''; // Clear the input if validation fails
+                }
+            });
+
+            var isFieldStaff = @Html.Raw(((List<int>)ViewBag.FieldStaffList).Contains(signedInUserId).ToString().ToLower());
+            // Ensure at least one file is selected if status is 1 (executed)
+            $('#complaintformbtn').on('click', function (e) {
+                const status = $('#statusDropdown').val(); // Assuming you have a dropdown with id 'Status'
+                const files = $('#ComplaintImages')[0].files;
+
+                if (isFieldStaff && (status == 1 || status == 2 || status == 6 || status == 7) && files.length === 0) {
+                    e.preventDefault();
+                    alert('You must attach at least one photo.');
+                }
+            });
+        });
+    </script>
+}

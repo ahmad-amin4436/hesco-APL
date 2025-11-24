@@ -1,0 +1,120 @@
+﻿@model IEnumerable<HESCO.Models.Complaint.ComplaintViewModel>
+
+@{
+     Layout=null;
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Daily Installation Report</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            page-break-inside: auto;
+        }
+
+        th, td {
+            border: 1px solid black;
+            padding: 5px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .vertical-center {
+            vertical-align: middle;
+        }
+
+        .bold-text {
+            font-weight: bold;
+        }
+
+        .header {
+            width: 100%;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+            .header img {
+                height: 80px;
+                width: auto;
+            }
+
+            .header .left {
+                float: left;
+            }
+
+            .header .right {
+                float: right;
+            }
+
+            .header .center {
+                display: inline-block;
+                line-height: 80px;
+                vertical-align: middle;
+                font-size: 24px;
+                font-weight: bold;
+            }
+
+        .page-break {
+            page-break-before: always;
+        }
+
+        .table-header {
+            display: table-header-group;
+        }
+
+        .table-footer {
+            display: table-footer-group;
+        }
+
+        .bold {
+            font-weight: bold;
+        }
+
+        .bg-light-green {
+            background-color: lightgreen;
+        }
+    </style>
+</head>
+<body>
+        <div class="header">
+        <div class="report-header center">Complaint List</div>
+    </div>
+            <table class="table center_text" id="complaintTable">
+                <thead>
+                    <tr>
+                        <th>Reference No</th>
+                        <th>MSN</th>
+                        <th>SubDiv</th>
+                        <th>Issue Description</th>
+                        <th>Created Date</th>
+                        <th>Execution Date</th>
+                        <th>Assigned To</th>
+                        <th>Status</th>
+                        <th>Is Faulty</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var complaint in Model)
+                    {
+                        <tr>
+                            <td>@complaint.Reference_No</td>
+                            <td>@complaint.MSN</td>
+                            <td>@complaint.SubDiv</td>
+                    <td style="word-wrap: break-word; white-space: normal;text-align:left;">@(string.IsNullOrEmpty(complaint.ExecutedDescriptionText) ? "-" : complaint.ExecutedDescriptionText)</td>
+                    <td style="text-align:left">@(complaint.OpenedAt == default(DateTime) ? "-" : complaint.OpenedAt.ToString("yyyy-MM-dd"))</td>
+                    <td>@(complaint.Execution_Date == default(DateTime) ? "-" : complaint.Execution_Date.ToString("yyyy-MM-dd"))</td>
+                    <td>@(string.IsNullOrEmpty(complaint.AssignedToUsername) ? "-" : complaint.AssignedToUsername)</td>
+                            <td>@complaint.StatusDisplay</td>
+                            <td>@complaint.IsFaultyDisplay</td>                           
+                        </tr>
+                    }
+                </tbody>
+            </table>     
+</body>
+</html>

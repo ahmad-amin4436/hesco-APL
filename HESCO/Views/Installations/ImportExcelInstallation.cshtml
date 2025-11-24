@@ -1,0 +1,49 @@
+﻿@model HESCO.Models.Installations.MeterInstallation
+
+@{
+    ViewData["Title"] = "Upload Installations Excel";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-sm-10">
+            <div class="card" style="background-color:blanchedalmond">
+                <div class="card-body p-3">
+                    <h1 style="text-align:center">Upload Installations</h1>
+                    @if (TempData["SkippedRows"] != null)
+                    {
+                        <div class="alert alert-warning">
+                            <strong>Some rows were skipped:</strong>
+                            <br />
+                            @Html.Raw(TempData["SkippedRows"])
+                        </div>
+                    }
+
+                    <div class="form-group mt-2">
+                        <a href="@Url.Action("DownloadTemplate", "Installations")" class=" btn btn-dark">Download Template</a>
+                    </div>
+                    <form asp-action="ImportExcelInstallation" method="post" enctype="multipart/form-data">
+                        @*  <div class="form-group">
+                            <label asp-for="Project" class="control-label"></label>
+                            <select asp-for="Project" class="form-control" asp-items="ViewBag.SelectProject" required>
+                                <option value="">Select a Project</option>
+                            </select>
+                            <span asp-validation-for="Project" class="text-danger"></span>
+                        </div> *@
+                        <div class="form-group">
+                            <label for="file">Upload Excel File</label>
+                            <input type="file" name="file" class="form-control" required />
+                        </div>
+                        <div class="form-group mt-2">
+                            <input type="submit" value="Import" class="btn btn-primary" />
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div>
+        @*  <a href="@Url.Action("ViewSubdivisionList", "Subdivision")" class="btn btn-success">Back to List</a> *@
+        <a href="#" class="btn btn-success">Back to List</a>
+    </div>
+</div>

@@ -1,0 +1,122 @@
+﻿@model HESCO.Models.User
+@{
+    ViewData["Title"] = "Login User";
+    Layout = "~/Views/Shared/_LoginLayout.cshtml";
+}
+
+@* <div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-sm-10">
+            <div class="card" style="background-color:blanchedalmond">
+                <div class="card-body p-3">
+                    <p style="text-align:center; font-weight:bold;font-size:12px">Sign in to start your session</p>
+                    @if (ViewBag.ErrorMessage != null)
+                    {
+                        <p style="color:red;">@ViewBag.ErrorMessage</p>
+                    }
+                    <form asp-action="LoginUser" method="post">
+                        <div class="form-group">
+                            <label asp-for="Username"></label>
+                            <input asp-for="Username" class="form-control" />
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="Password"></label>
+                            <div class="input-group">
+                                <input asp-for="Password" type="password" class="form-control" id="password" />
+                                <button type="button" class="input-group-text" id="togglePassword" style="cursor: pointer;">
+                                    <i class="fa fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                         <div class="form-group form-check">
+                            <input asp-for="RememberMe" class="form-check-input" type="checkbox" id="rememberMe" />
+                            <label asp-for="RememberMe" class="form-check-label" for="rememberMe">Remember Me</label>
+                        </div>
+                        <div class="form-group">
+                            <input type="submit" value="Login" class="btn btn-primary" />
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div> *@
+<div class="login-container">
+    <!-- Left: Image background -->
+    <div class="login-image">
+        @*    <h2 class="welcome-text">Welcome to Inventory Management</h2> *@
+    </div>  
+
+    <!-- Right: Login Form -->
+    <div class="login-form-container">
+        <div class="card p-4" style="width: 400px;">
+            <div style="text-align:center" class="login-header">
+                    <img src="~/assets/img/icons/Accuratelogo.png" alt="Logo" class="logo">
+                <h3>HESCO</h3>
+                <p>Access the system using your credentials</p>
+            </div>
+
+            @if (ViewBag.ErrorMessage != null)
+            {
+                <p class="text-danger">@ViewBag.ErrorMessage</p>
+            }
+            @if (ViewBag.ProjectLinks != null && ViewBag.ProjectLinks is List<ProjectLink> ProjectLinks)
+            {
+                <div class="dropdown text-center mb-3">
+                    <button class="btn btn-light dropdown-toggle border" type="button" id="projectDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        Select Project
+                    </button>
+                    <ul class="dropdown-menu w-100 text-center" aria-labelledby="projectDropdown">
+                        @foreach (var project in (List<ProjectLink>)ViewBag.ProjectLinks)
+                        {
+                            <li><a class="dropdown-item" href="@project.project_url" target="_blank">@project.name</a></li>
+                        }
+                    </ul>
+                </div>
+            }
+            <form asp-action="LoginUser" method="post">
+                <div class="form-group">
+                    <label asp-for="Username"></label>
+                    <input asp-for="Username" class="form-control" />
+                </div>
+
+                <div class="form-group">
+                    <label asp-for="Password"></label>
+                    <div class="input-group">
+                        <input asp-for="Password" type="password" class="form-control" id="password" />
+                        <button type="button" class="input-group-text" id="togglePassword" style="cursor: pointer;">
+                            <i class="fa fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group form-check">
+                    <input asp-for="RememberMe" class="form-check-input" type="checkbox" id="rememberMe" />
+                    <label asp-for="RememberMe" class="form-check-label" for="rememberMe">Remember Me</label>
+                </div>
+
+                <div class="form-group">
+                    <input type="submit" value="Login" class="btn btn-primary btn-block" />
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.getElementById("togglePassword").addEventListener("click", function () {
+            var passwordInput = document.getElementById("password");
+            var icon = this.querySelector("i");
+            if (passwordInput.type === "password") {
+                passwordInput.type = "text";
+                icon.classList.remove("fa-eye");
+                icon.classList.add("fa-eye-slash");
+            } else {
+                passwordInput.type = "password";
+                icon.classList.remove("fa-eye-slash");
+                icon.classList.add("fa-eye");
+            }
+        });
+    </script>
+}

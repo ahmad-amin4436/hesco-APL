@@ -1,0 +1,53 @@
+﻿@model IEnumerable<HESCO.Models.RoleMenuViewModel>
+@using X.PagedList.Mvc.Core
+@using X.PagedList
+
+@{
+	ViewData["Title"] = "ViewRolesDetails";
+	Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+
+</style>
+
+<div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
+	<div class="card">
+		<div class="card-body p-3">
+			<h1 style="text-align:center">Roles & Permissions</h1>
+
+			<table class="table center_text">
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody>
+					@foreach (var actions in Model)
+					{
+						<tr>
+							<td><strong>@actions.Name</strong></td>
+							<td>
+								@if (actions.ActionTitle != null)
+								{
+									@* <span>@string.Join(", ", role.RBACId)</span> *@
+									@Html.Raw(actions.ActionTitle.Replace(", ", "<br>"))
+								}
+								else
+								{
+									<span>No Permissions Assigned</span>
+								}
+							</td>
+
+						</tr>
+					}
+				</tbody>
+			</table>
+
+			<div>
+				<a href="@Url.Action("ViewRoles", "Roles")" class="btn btn-success">Back to List</a>
+			</div>
+		</div>
+	</div>
+</div>

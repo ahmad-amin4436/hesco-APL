@@ -1,0 +1,309 @@
+﻿@{
+    ViewData["Title"] = "View Project";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+   
+    string projectName = ViewData["Project"]?.ToString() ?? "";
+    string CreatedBy = ViewData["CreatedBy"]?.ToString() ?? "";   
+    int page = int.Parse(ViewData["page"]?.ToString() ?? "1");
+    int pageSize = int.Parse(ViewData["pageSize"]?.ToString() ?? "1");
+    int totalRecords = int.Parse(ViewData["totalRecords"]?.ToString() ?? "0");
+    var totalPages = int.Parse(ViewData["totalPages"]?.ToString() ?? "0");
+    string createddate = ViewBag.CreatedDate?.ToString() ?? "";
+}
+<style>
+    /* Target the select2 dropdown options */
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        font-size: 10px !important;
+    }
+
+    .select2-dropdown .select2-results__option {
+        font-size: 10px !important;
+    }
+
+    /* For multiple selection dropdowns */
+    .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+        font-size: 10px !important;
+    }
+
+    .table thead th {
+        padding: 0px;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        display: grid !important;
+    }
+
+    .c-filters {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .table-success {
+        background-color: red !important;
+        color: black !important;
+    }
+
+    .pagination-list {
+        display: flex;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .page-item {
+        margin: 0 2px;
+    }
+
+        .page-item a {
+            text-decoration: none;
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            color: #007bff;
+            display: inline-block;
+        }
+
+        .page-item.active a {
+            background-color: #007bff;
+            color: #fff;
+            border-color: #007bff;
+        }
+
+        .page-item.disabled a {
+            color: #ccc;
+            cursor: not-allowed;
+            border-color: #ddd;
+        }
+
+    .highlighted {
+        background-color: #99ccff;
+    }
+
+    .suggestions-box {
+        position: absolute;
+        background: white;
+        border: 1px solid #ccc;
+        list-style: none;
+        padding: 0;
+        max-height: 150px;
+        overflow-y: auto;
+        display: none;
+        width: 200px;
+    }
+
+    .suggestion-item {
+        padding: 5px;
+        cursor: pointer;
+    }
+
+        .suggestion-item:hover {
+            background-color: #f0f0f0;
+        }
+</style>
+
+<div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
+    <div class="card">
+        <div class="card-body p-3">
+            <h1 style="text-align:center">Projects</h1>
+            <div class="row mb-2">
+                <div class="col-md-12 text-right">
+                    <a href="@Url.Action("CreateProject", "Project")" class="btn btn-success">Create New</a>
+                    <button id="clearFiltersBtn" class="btn btn-primary">Clear Filters</button>
+                </div>
+            </div>
+            <div class="row mb-2">
+                <input type="hidden" id="hiddenPageSize" value="@ViewBag.PageSize" />
+                <label style="font-size:14px" for="pageSizeSelector">Items per page:</label>
+                <div class="col-md-1 text-right">
+                    <select id="pageSizeSelector" class="form-control">
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="75">75</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+            <p style="color: blue; font-weight: bold;">
+                Showing @((page * pageSize) - pageSize + 1) to @(Math.Min(totalRecords, page * pageSize)) of @(totalRecords) records
+            </p>
+
+            <table style="font-size:11px" class="table center_text">
+                <thead>
+                    <tr>
+                        <th>Project Name</th>                       
+                        <th>Created At</th>
+                        <th>Created By</th>
+                    </tr>
+                    <tr>
+                        <th class="suggestion-container">
+                            <input type="text" class="filter-input" data-filter="projectName" placeholder="Search Name" value="@ViewData["Project"]">
+                            <ul id="suggestions-projectName" class="suggestions-box" style="display:none;"></ul>
+                        </th>                      
+                        <th> <input type="date" id="createdAtFilter" name="createdAtFilter" style="width:120px;" class="form-control c-filters" value="@ViewBag.CreatedDate"></th>
+                        <th>
+                            <select id="createdByFilter" class="filter-dropdown form-control c-filters" style="width:80px;" asp-items="ViewBag.SelectCreatedBy"></select>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var project in Model)
+                    {
+                        <tr>
+                            <td>@project.ProjectName</td>
+                            <td>@project.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td>@project.CreatedByUsername</td>                          
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div class="pagination">
+    <ul class="pagination-list">
+        @if (ViewData["totalPages"] != null)
+        {
+            var currentPage = (int)ViewData["page"];
+            var totalPage = (int)ViewData["totalPages"];
+
+            // Calculate the range of pages to show
+            var startPage = Math.Max(1, currentPage - 5);
+            var endPage = Math.Min(totalPage, currentPage + 4);
+
+            if (endPage - startPage < 9) // Ensure we have 10 pages shown
+            {
+                if (startPage == 1)
+                {
+                    endPage = Math.Min(totalPage, startPage + 9);
+                }
+                else if (endPage == totalPage)
+                {
+                    startPage = Math.Max(1, endPage - 9);
+                }
+            }
+
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a href="@Url.Action("ViewProjectList", new { page = 1, projectName = Context.Request.Query["Project"], createdByFilter = Context.Request.Query["createdByFilter"], createdAtFilter = Context.Request.Query["createdAtFilter"],pageSize = ViewData["pageSize"] })">&laquo;&laquo;</a>
+            </li>
+
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a href="@Url.Action("ViewProjectList", new { page = Math.Max(1, currentPage - 1), projectName = Context.Request.Query["Project"], createdByFilter = Context.Request.Query["createdByFilter"], createdAtFilter = Context.Request.Query["createdAtFilter"],pageSize = ViewData["pageSize"] })">&laquo;</a>
+            </li>
+
+            @for (int i = startPage; i <= endPage; i++)
+            {
+                <li class="page-item @(i == currentPage ? "active" : "")">
+                    <a href="@Url.Action("ViewProjectList", new { page = i, projectName = Context.Request.Query["Project"], createdByFilter = Context.Request.Query["createdByFilter"], createdAtFilter = Context.Request.Query["createdAtFilter"],pageSize = ViewData["pageSize"] })">@i</a>
+                </li>
+            }
+
+            <li class="page-item @(currentPage == totalPage ? "disabled" : "")">
+                <a href="@Url.Action("ViewProjectList", new { page = Math.Min(totalPage, currentPage + 1), projectName = Context.Request.Query["Project"], createdByFilter = Context.Request.Query["createdByFilter"], createdAtFilter = Context.Request.Query["createdAtFilter"],pageSize = ViewData["pageSize"] })">&raquo;</a>
+            </li>
+
+            <li class="page-item @(currentPage == totalPage ? "disabled" : "")">
+                <a href="@Url.Action("ViewProjectList", new { page = totalPage, projectName = Context.Request.Query["Project"], createdByFilter = Context.Request.Query["createdByFilter"], createdAtFilter = Context.Request.Query["createdAtFilter"],pageSize = ViewData["pageSize"] })">&raquo;&raquo;</a>
+            </li>
+        }
+    </ul>
+</div>
+
+
+@section scripts
+{
+    <script>
+
+        function reloadProject(page) {
+            function getFilterValue(selector) {
+                let input = $(selector);
+                return input.data("selected-value") || input.val(); // Prefer selected value over manual input
+            }
+
+            var projectName = getFilterValue('.filter-input[data-filter="projectName"]');
+            var createdByFilter = $('#createdByFilter').val();
+            var createdAtFilter = $('#createdAtFilter').val();
+            var pageSize = $('#pageSizeSelector').val();
+
+            window.location.href = '@Url.Action("ViewProjectList")'
+                + '?page=' + page
+                + '&pageSize=' + pageSize
+                + '&projectName=' + encodeURIComponent(projectName)
+                + '&createdByFilter=' + encodeURIComponent(createdByFilter)
+                + '&createdAtFilter=' + encodeURIComponent(createdAtFilter);
+        }
+        $(document).ready(function () {
+            $(".filter-input").on("keyup", function () {
+                let input = $(this);
+                let filterType = input.data("filter");
+                let searchTerm = input.val();
+
+                if (searchTerm.length < 4) {
+                    $("#suggestions-" + filterType).html("").hide();
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("GetFilteredSuggestions", "Project")',
+                    type: "GET",
+                    data: { searchTerm: searchTerm, filterType: filterType },
+                    success: function (response) {
+                        let suggestionsBox = $("#suggestions-" + filterType);
+                        suggestionsBox.html("");
+                        if (response.suggestions.length > 0) {
+                            response.suggestions.forEach(item => {
+                                suggestionsBox.append("<li class='suggestion-item'>" + item + "</li>");
+                            });
+                            suggestionsBox.show();
+                        } else {
+                            suggestionsBox.hide();
+                        }
+                    }
+                });
+            });
+
+            $(document).on("click", ".suggestion-item", function () {
+                let selectedValue = $(this).text().trim(); // Get clicked suggestion text
+                let parentInput = $(this).closest(".suggestion-container").find(".filter-input");
+
+                parentInput.val(selectedValue); // Set input value
+                parentInput.data("selected-value", selectedValue); // Store it separately for tracking
+
+                $(".suggestions-box").hide(); // Hide suggestion box
+
+                // Automatically trigger filtering after selecting a suggestion
+                reloadProject(@(page));  // Reload with selected Subdivision filter
+            });
+
+            var pageSize = $('#hiddenPageSize').val(); // Get the selected page size from the hidden field
+
+            if (pageSize) {
+                $('#pageSizeSelector').val(pageSize); // Set the selected value
+            }
+            $('#exportExcelBtn').on('click', function () {
+                exportToExcel(@(page));
+            });
+            $('#pageSizeSelector').on('change', function () {
+                var selectedPageSize = $(this).val();
+                reloadProject(1, selectedPageSize); // Reload with the selected page size
+            });
+            $('.filter-dropdown').select2({
+                multiple: true,
+                dropdownAutoWidth: true
+            });
+            $('.c-filters').on('change', function () {
+                reloadProject(@(page));
+            });
+
+
+            // Set the selected values for the select element         
+            $('#createdByFilter').val([@(CreatedBy)]).trigger('change.select2');
+
+            $('#clearFiltersBtn').on('click', function () {
+                var pageSize = $('#pageSizeSelector').val();
+                window.location.href = '@Url.Action("ViewProjectList")' + '?pageSize=' + pageSize;
+            });
+        });
+    </script>
+}
+
+
+

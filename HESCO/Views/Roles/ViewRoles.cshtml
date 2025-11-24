@@ -1,0 +1,114 @@
+﻿@model X.PagedList.IPagedList<HESCO.Models.RoleMenuViewModel>
+@using X.PagedList.Mvc.Core
+@using X.PagedList
+
+@{
+    ViewData["Title"] = "ViewRoles";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 20px;
+    }
+
+        .pagination .page-item.active .page-link {
+            background-color: #28a745; /* Green color */
+            border-color: #28a745;
+            color: white;
+        }
+
+        .pagination .page-link {
+            color: #28a745;
+            border-radius: 5px;
+            margin: 2px;
+        }
+
+            .pagination .page-link:hover {
+                background-color: #218838;
+                color: white;
+            }
+
+        .pagination .page-item.disabled .page-link {
+            color: #ccc;
+            pointer-events: none;
+        }
+
+</style>
+
+<div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
+    <div class="card">
+        <div class="card-body p-3">
+            <h1 style="text-align:center">Roles</h1>
+            <div class="row mb-2">
+                <div class="col-md-12 text-right">
+                    <a href="@Url.Action("CreateRole", "Roles")" class="btn btn-success">Create New</a>
+                </div>
+            </div>
+            <table class="table center_text">
+                <thead>
+                    <tr>
+                        <th>@Html.DisplayNameFor(model => model.First().Name)</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var role in Model)
+                    {
+                        <tr>
+                            <td>@role.Name</td>
+                            <td>
+                                @if (role.Status == 1)
+                                {
+                                    <a href="@Url.Action("EditRoleDetails", "Roles", new { id = role.Id })" title="Edit">
+                                        <i class="fas fa-edit" style="color:green;"></i>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <i class="fas fa-edit text-muted" title="Editing Disabled"></i>
+                                }
+                                |
+                                <a href="@Url.Action("ViewRoleDetail", "Roles", new { id = role.Id })" title="View">
+                                    <i class="fas fa-eye" style="color:green;"></i>
+                                </a>
+                                |
+                                <a href="@Url.Action("ConfirmRoleDelete", "Roles", new { id = role.Id })" title="Delete">
+                                    <i class="fa-solid fa-square-pen" style="color:darkorange;"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <!-- Pagination controls -->
+            <div class="d-flex justify-content-center mt-3">
+                <ul class="pagination">
+                    @Html.PagedListPager(Model, page => Url.Action("ViewRoles", new { page }),
+                             new PagedListRenderOptions
+                    {
+                        UlElementClasses = new[] { "pagination", "pagination-lg" },
+                        LiElementClasses = new[] { "page-item" },
+                        PageClasses = new[] { "page-link" },
+                        LinkToFirstPageFormat = "<<",
+                        LinkToPreviousPageFormat = "<",
+                        LinkToNextPageFormat = ">",
+                        LinkToLastPageFormat = ">>",
+                        MaximumPageNumbersToDisplay = 10,
+                        DisplayLinkToFirstPage = PagedListDisplayMode.Always,
+                        DisplayLinkToLastPage = PagedListDisplayMode.Always,
+                        DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+                        DisplayLinkToNextPage = PagedListDisplayMode.Always,
+                        DisplayEllipsesWhenNotShowingAllPageNumbers = true
+                    })
+                </ul>
+            </div>
+
+
+
+        </div>
+    </div>
+</div>

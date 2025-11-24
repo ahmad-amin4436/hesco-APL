@@ -1,0 +1,679 @@
+﻿@model IEnumerable<HESCO.Models.Complaint.FaultyMeterModel>
+
+@{
+    ViewData["Title"] = "ViewFaultyMeters";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    string fmsn = ViewData["FMSN"]?.ToString() ?? "";
+    string fat = ViewData["FAT"]?.ToString() ?? "";
+    // string fsdn = ViewData["FSDN"]?.ToString() ?? "";
+    string issueDescription = ViewData["IssueDescription"]?.ToString() ?? "";
+    string Status = ViewData["Status"]?.ToString() ?? "";
+    string fReportedBy = ViewData["FRB"]?.ToString() ?? "";
+    string fdataReset = ViewData["DR"]?.ToString() ?? "";
+    string freceived = ViewData["Received"]?.ToString() ?? "";
+    int page = int.Parse(ViewData["page"]?.ToString() ?? "1");
+    int pageSize = int.Parse(ViewData["pageSize"]?.ToString() ?? "1");
+    int totalRecords = int.Parse(ViewData["totalRecords"]?.ToString() ?? "0");
+    var totalPages = int.Parse(ViewData["totalPages"]?.ToString() ?? "0");
+    // Group complaints by Reference_No and only include those that appear more than once
+    var groupedFaultyMeters = Model
+        .GroupBy(c => c.MSN)
+        .Where(g => g.Count() > 1); // Only include groups where the count is greater than 1
+    var singleFaultyMeters = Model
+      .GroupBy(c => c.MSN)
+      .Where(g => g.Count() == 1)
+      .SelectMany(g => g); // Flatten the grouped collection back to a list
+}
+<style>
+    /* Target the select2 dropdown options */
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        font-size: 10px !important;
+    }
+
+    .select2-dropdown .select2-results__option {
+        font-size: 10px !important;
+    }
+
+    /* For multiple selection dropdowns */
+    .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+        font-size: 10px !important;
+    }
+
+    .table thead th {
+        padding: 0px;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        display: grid !important;
+    }
+
+    .c-filters {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .table-success {
+        background-color: red !important;
+        color: black !important;
+    }
+
+    .pagination-list {
+        display: flex;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .page-item {
+        margin: 0 2px;
+    }
+
+        .page-item a {
+            text-decoration: none;
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            color: #007bff;
+            display: inline-block;
+        }
+
+        .page-item.active a {
+            background-color: #007bff;
+            color: #fff;
+            border-color: #007bff;
+        }
+
+        .page-item.disabled a {
+            color: #ccc;
+            cursor: not-allowed;
+            border-color: #ddd;
+        }
+
+    .table-success {
+        background-color: #d4edda !important; /* Light green background */
+        color: #155724 !important; /* Dark green text */
+    }
+
+    .group-header {
+        background-color: #f7f7f7;
+        font-weight: bold;
+        text-align: left;
+        padding-left: 15px;
+    }
+
+    .group-toggle {
+        display: flex;
+        align-items: center;
+    }
+
+        .group-toggle .group-icon {
+            margin-right: 10px;
+            font-size: 14px;
+            color: #007bff;
+        }
+</style>
+<div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
+    <div class="card">
+        <div class="card-body p-3">
+            <h1 style="text-align:center">Faulty Meters</h1>
+            <div class="row mb-2">
+                <div class="col-md-12 text-right">
+                    @* <button id="exportPdfBtn" class="btn btn-dark">Export to PDF</button> *@
+                    <a href="@Url.Action("AddFaultyMeterLetter", "Complaint")" class="btn btn-success">Attach Letter</a>
+                    <button id="exportExcelBtn" class="btn btn-dark">Export to Excel</button>
+                    <button id="clearFiltersBtn" class="btn btn-primary">Clear Filters</button>
+                </div>
+            </div>
+            <div class="row mb-2">
+                <input type="hidden" id="hiddenPageSize" value="@ViewBag.PageSize" />
+                <label style="font-size:14px" for="pageSizeSelector">Items per page:</label>
+                <div class="col-md-1 text-right">
+                    <select id="pageSizeSelector" class="form-control">
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="75">75</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+            <p style="color: blue; font-weight: bold;">
+                Showing @((page * pageSize) - pageSize + 1) to @(Math.Min(totalRecords, page * pageSize)) of @(totalRecords) records
+            </p>
+            <table class="table center_text">
+                <thead>
+                    <tr>
+                        <th>MSN</th>
+                        <th>Description</th>
+                        <th>Reported Date</th>
+                        <th>Reported By</th>
+                        <th>Assigned To</th>
+                        <th>Status</th>
+                        <th>Data Reset</th>
+                        <th>Received</th>
+                        <th></th>
+                    </tr>
+                    <tr>
+                        <th>
+                            <select id="MSNFilter" class="filter-dropdown form-control c-filters" style="width:80%" asp-items="ViewBag.SelectMSN"></select>
+                        </th>
+                  @*       <th>
+                            <select id="subDivisionNameFilter" class="filter-dropdown  form-control c-filters" style="width:80%" asp-items="ViewBag.SelectSubDivision"></select>
+                        </th> *@
+                        <th><input type="text" id="issueDescriptionFilter" class="form-control c-filters" style="width:80%;font-size:11px;" value="@issueDescription"></th>
+                        <th> <input type="date" id="executedDate" name="ExecutedDate" class="form-control c-filters" style=" width:80%;font-size:11px;" value="@ViewBag.ExecutedDate"></th>
+                        <th>
+                            <select id="ReportedByFilter" class="filter-dropdown form-control c-filters" style="width:80%" asp-items="ViewBag.SelectReportedBy"></select>
+                        </th>
+                        <th>
+                            <select id="assignedToFilter" class="filter-dropdown form-control c-filters" style="width:80%" asp-items="ViewBag.SelectAssignedTo"></select>
+                        </th>
+                        <th>
+                            <select id="statusFilter" class="filter-dropdown  form-control c-filters" style="width:80%" asp-items="ViewBag.SelectStatus"></select>
+                        </th>
+                        <th>
+                            <select id="dataResetFilter" class="filter-dropdown  form-control c-filters" style="width:80%" asp-items="ViewBag.SelectDataReset"></select>
+                        </th>
+                        <th>
+                            <select id="ReceivedFilter" class="filter-dropdown  form-control c-filters" style="width:80%" asp-items="ViewBag.SelectReceived"></select>
+                        </th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in singleFaultyMeters)
+                    {
+                        <tr class="@(item.DataReset == 0 && item.Status != 3 ? "table-success" : "")">
+                            <td>
+                                @Html.DisplayFor(modelItem => item.MSN)
+                            </td>
+                       @*      <td>@(string.IsNullOrEmpty(item.SubDiv) ? "-" : item.SubDiv)</td> *@
+                            <td style="word-wrap: break-word; white-space: normal; text-align:left;">
+                                @Html.DisplayFor(modelItem => item.OpenDescription)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.OpenedAt)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.OpenedBy)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.AssignedTo)
+                            </td>
+
+                            <td>
+                                @Html.DisplayFor(modelItem => item.StatusDisplay)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.DataResetDisplay)
+                            </td>
+                            <td>
+                                @Html.DisplayFor(modelItem => item.ReceivedDisplay)
+                            </td>
+                            <td>
+                                @if (item.Status != 3)
+                                {
+                                    <a href="@Url.Action("EditFaultyMeter", new
+                                {
+                                    id = item.Id,
+                                        fmsn = ViewData["FMSN"],
+                                        fat = ViewData["FAT"],
+                                        issueDescription = ViewData["IssueDescription"],
+                                        status = ViewData["Status"],
+                                        executedDate = ViewData["ExecutedDate"],
+                                        fReportedBy = ViewData["FRB"],
+                                        fdataReset = ViewData["DR"],
+                                        freceived = ViewData["Received"],
+                                        page = ViewData["page"],
+                                        pageSize = ViewData["pageSize"]
+                                })"
+                                       title="Edit"
+                                       onclick="return confirmEdit('@ViewBag.status', '@Url.Action("EditFaultyMeter", new
+                                {
+                                     id = item.Id,
+                                        fmsn = ViewData["FMSN"],
+                                        fat = ViewData["FAT"],
+                                        issueDescription = ViewData["IssueDescription"],
+                                        status = ViewData["Status"],
+                                        executedDate = ViewData["ExecutedDate"],
+                                        fReportedBy = ViewData["FRB"],
+                                        fdataReset = ViewData["DR"],
+                                        freceived = ViewData["Received"],
+                                        page = ViewData["page"],
+                                        pageSize = ViewData["pageSize"]
+                                })');">
+                                        <i class="fas fa-edit" style="color:green;"></i>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span title="Edit" style="color:grey; cursor:not-allowed;">
+                                        <i class="fas fa-edit"></i>
+                                    </span>
+                                }
+                                @*   @Html.Raw("| <a href=\"" + Url.Action("EditFaultyMeter", new
+                            {
+                            id = item.Id,
+                            fmsn = ViewData["FMSN"],
+                            fat = ViewData["FAT"],
+                            fsdn = ViewData["FSDN"],
+                            issueDescription = ViewData["IssueDescription"],
+                            status = ViewData["Status"],
+                            executedDate = ViewData["ExecutedDate"],
+                            fReportedBy = ViewData["FRB"],
+                            fdataReset = ViewData["DR"],
+                            freceived = ViewData["Received"],
+                            page = ViewData["page"],
+                            pageSize = ViewData["pageSize"]
+                            }) + "\" title=\"Edit\"><i class=\"fas fa-edit\" style=\"color:green;\"></i></a> | ") *@
+                                @Html.Raw("| <a href=\"" + Url.Action("ViewFaultyMeterDetail", new
+                                    {
+                                        id = item.Id,
+                                        fmsn = ViewData["FMSN"],
+                                        fat = ViewData["FAT"],
+                                        issueDescription = ViewData["IssueDescription"],
+                                        status = ViewData["Status"],
+                                        executedDate = ViewData["ExecutedDate"],
+                                        fReportedBy = ViewData["FRB"],
+                                        fdataReset = ViewData["DR"],
+                                        freceived = ViewData["Received"],
+                                        page = ViewData["page"],
+                                        pageSize = ViewData["pageSize"]
+                                    }) + "\" title=\"View\"><i class=\"fas fa-eye\" style=\"color:green;\"></i></a>")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tbody>
+                    @foreach (var group in groupedFaultyMeters)
+                    {
+                        var MSN = group.Key;
+
+                    // Start the group row (Reference No row)
+                        <tr class="group-header">
+                            <td colspan="11" style="cursor: pointer;" class="group-toggle" data-reference="@MSN">
+                                <span class="group-icon">+</span>
+                                MSN: @MSN
+                            </td>
+                        </tr>
+
+                // Start the group body (hidden by default)
+                    <tbody class="group-body" data-reference="@MSN" style="display: none;">
+                            @foreach (var item in group)
+                            {
+                            <tr class="@(item.DataReset == 0 && item.Status != 3 ? "table-success" : "")">
+                                <td>
+                                        @Html.DisplayFor(modelItem => item.MSN)
+                                </td>
+                                @* <td>@(string.IsNullOrEmpty(item.SubDiv) ? "-" : item.SubDiv)</td> *@
+                                <td style="word-wrap: break-word; white-space: normal; text-align:left;">
+                                        @Html.DisplayFor(modelItem => item.OpenDescription)
+                                </td>
+                                <td>
+                                        @Html.DisplayFor(modelItem => item.OpenedAt)
+                                </td>
+                                <td>
+                                        @Html.DisplayFor(modelItem => item.OpenedBy)
+                                </td>
+                                <td>
+                                        @Html.DisplayFor(modelItem => item.AssignedTo)
+                                </td>
+
+                                <td>
+                                        @Html.DisplayFor(modelItem => item.StatusDisplay)
+                                </td>
+                                <td>
+                                        @Html.DisplayFor(modelItem => item.DataResetDisplay)
+                                </td>
+                                <td>
+                                        @Html.DisplayFor(modelItem => item.ReceivedDisplay)
+                                </td>
+                                <td>
+                                        @if (item.Status != 3)
+                                        {
+                                        <a href="@Url.Action("EditFaultyMeter", new
+                                {
+                                    id = item.Id,
+                                        fmsn = ViewData["FMSN"],
+                                        fat = ViewData["FAT"],
+                                        issueDescription = ViewData["IssueDescription"],
+                                        status = ViewData["Status"],
+                                        executedDate = ViewData["ExecutedDate"],
+                                        fReportedBy = ViewData["FRB"],
+                                        fdataReset = ViewData["DR"],
+                                        freceived = ViewData["Received"],
+                                        page = ViewData["page"],
+                                        pageSize = ViewData["pageSize"]
+                                })"
+                                           title="Edit"
+                                           onclick="return confirmEdit('@ViewBag.status', '@Url.Action("EditFaultyMeter", new
+                                {
+                                     id = item.Id,
+                                        fmsn = ViewData["FMSN"],
+                                        fat = ViewData["FAT"],
+                                        issueDescription = ViewData["IssueDescription"],
+                                        status = ViewData["Status"],
+                                        executedDate = ViewData["ExecutedDate"],
+                                        fReportedBy = ViewData["FRB"],
+                                        fdataReset = ViewData["DR"],
+                                        freceived = ViewData["Received"],
+                                        page = ViewData["page"],
+                                        pageSize = ViewData["pageSize"]
+                                })');">
+                                            <i class="fas fa-edit" style="color:green;"></i>
+                                        </a>
+                                        }
+                                        else
+                                        {
+                                        <span title="Edit" style="color:grey; cursor:not-allowed;">
+                                            <i class="fas fa-edit"></i>
+                                        </span>
+                                        }
+                                        @*   @Html.Raw("| <a href=\"" + Url.Action("EditFaultyMeter", new
+                            {
+                            id = item.Id,
+                            fmsn = ViewData["FMSN"],
+                            fat = ViewData["FAT"],
+                            fsdn = ViewData["FSDN"],
+                            issueDescription = ViewData["IssueDescription"],
+                            status = ViewData["Status"],
+                            executedDate = ViewData["ExecutedDate"],
+                            fReportedBy = ViewData["FRB"],
+                            fdataReset = ViewData["DR"],
+                            freceived = ViewData["Received"],
+                            page = ViewData["page"],
+                            pageSize = ViewData["pageSize"]
+                            }) + "\" title=\"Edit\"><i class=\"fas fa-edit\" style=\"color:green;\"></i></a> | ") *@
+                                        @Html.Raw("| <a href=\"" + Url.Action("ViewFaultyMeterDetail", new
+                                            {
+                                                id = item.Id,
+                                                fmsn = ViewData["FMSN"],
+                                                fat = ViewData["FAT"],
+                                                issueDescription = ViewData["IssueDescription"],
+                                                status = ViewData["Status"],
+                                                executedDate = ViewData["ExecutedDate"],
+                                                fReportedBy = ViewData["FRB"],
+                                                fdataReset = ViewData["DR"],
+                                                freceived = ViewData["Received"],
+                                                page = ViewData["page"],
+                                                pageSize = ViewData["pageSize"]
+                                            }) + "\" title=\"View\"><i class=\"fas fa-eye\" style=\"color:green;\"></i></a>")
+                                </td>
+                            </tr>
+                            }
+                    </tbody>
+                    }
+            </table>
+        </div>
+    </div>
+</div>
+<div class="pagination">
+    <ul class="pagination-list">
+        @if (ViewData["totalPages"] != null)
+        {
+            var currentPage = (int)ViewData["page"];
+            var totalPage = (int)ViewData["totalPages"];
+
+            // Calculate the range of pages to show
+            var startPage = Math.Max(1, currentPage - 5);
+            var endPage = Math.Min(totalPage, currentPage + 4);
+
+            if (endPage - startPage < 9) // Ensure we have 10 pages shown
+            {
+                if (startPage == 1)
+                {
+                    endPage = Math.Min(totalPage, startPage + 9);
+                }
+                else if (endPage == totalPage)
+                {
+                    startPage = Math.Max(1, endPage - 9);
+                }
+            }
+
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a href="@Url.Action("ViewFaultyMeters", new { page = 1,fmsn = ViewData["FMSN"],
+                                    fat = ViewData["FAT"],
+                                    issueDescription = ViewData["IssueDescription"],
+                                    status = ViewData["Status"],
+                                    executedDate = ViewData["ExecutedDate"],
+                                    fReportedBy = ViewData["FRB"],
+                                    fdataReset = ViewData["DR"],
+                                     freceived = ViewData["Received"],
+                                    pageSize = ViewData["pageSize"] })">&laquo;&laquo;</a>
+            </li>
+
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a href="@Url.Action("ViewFaultyMeters", new { page = Math.Max(1, currentPage - 1),fmsn = ViewData["FMSN"],
+                                    fat = ViewData["FAT"],
+                                    issueDescription = ViewData["IssueDescription"],
+                                    status = ViewData["Status"],
+                                    executedDate = ViewData["ExecutedDate"],
+                                    fReportedBy = ViewData["FRB"],
+                                    fdataReset = ViewData["DR"],
+                                     freceived = ViewData["Received"],
+                                    pageSize = ViewData["pageSize"] })">&laquo;</a>
+            </li>
+
+            @for (int i = startPage; i <= endPage; i++)
+            {
+                <li class="page-item @(i == currentPage ? "active" : "")">
+                    <a href="@Url.Action("ViewFaultyMeters", new { page = i, fmsn = ViewData["FMSN"],
+                                    fat = ViewData["FAT"],
+                                    issueDescription = ViewData["IssueDescription"],
+                                    status = ViewData["Status"],
+                                    executedDate = ViewData["ExecutedDate"],
+                                    fReportedBy = ViewData["FRB"],
+                                    fdataReset = ViewData["DR"],
+                                     freceived = ViewData["Received"],
+                                    pageSize = ViewData["pageSize"] })">@i</a>
+                </li>
+            }
+
+            <li class="page-item @(currentPage == totalPage ? "disabled" : "")">
+                <a href="@Url.Action("ViewFaultyMeters", new { page = Math.Min(totalPage, currentPage + 1),fmsn = ViewData["FMSN"],
+                                    fat = ViewData["FAT"],
+                                    issueDescription = ViewData["IssueDescription"],
+                                    status = ViewData["Status"],
+                                    executedDate = ViewData["ExecutedDate"],
+                                    fReportedBy = ViewData["FRB"],
+                                    fdataReset = ViewData["DR"],
+                                     freceived = ViewData["Received"],
+                                    pageSize = ViewData["pageSize"] })">&raquo;</a>
+            </li>
+
+            <li class="page-item @(currentPage == totalPage ? "disabled" : "")">
+                <a href="@Url.Action("ViewFaultyMeters", new { page = totalPage, fmsn = ViewData["FMSN"],
+                                    fat = ViewData["FAT"],
+                                    issueDescription = ViewData["IssueDescription"],
+                                    status = ViewData["Status"],
+                                    executedDate = ViewData["ExecutedDate"],
+                                    fReportedBy = ViewData["FRB"],
+                                    fdataReset = ViewData["DR"],
+                                     freceived = ViewData["Received"],
+                                    pageSize = ViewData["pageSize"] })">&raquo;&raquo;</a>
+            </li>
+        }
+    </ul>
+</div>
+@* <div class="pagination">
+    <ul class="pagination-list">
+        @if (ViewData["totalPages"] != null)
+        {
+            var currentPage = (int)ViewData["page"];
+
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a href="@Url.Action("ViewFaultyMeters", new { page = 1,fmsn = ViewData["FMSN"],
+                                    fat = ViewData["FAT"],
+                                    fsdn = ViewData["FSDN"],
+                                    issueDescription = ViewData["IssueDescription"],
+                                    status = ViewData["Status"],
+                                    executedDate = ViewData["ExecutedDate"],
+                                    fReportedBy = ViewData["FRB"],
+                                    fdataReset = ViewData["DR"],
+                                     freceived = ViewData["Received"],
+                                    pageSize = ViewData["pageSize"] })">&laquo;&laquo;</a>
+            </li>
+
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a href="@Url.Action("ViewFaultyMeters", new { page = Math.Max(1, currentPage - 1),fmsn = ViewData["FMSN"],
+                                    fat = ViewData["FAT"],
+                                    fsdn = ViewData["FSDN"],
+                                    issueDescription = ViewData["IssueDescription"],
+                                    status = ViewData["Status"],
+                                    executedDate = ViewData["ExecutedDate"],
+                                    fReportedBy = ViewData["FRB"],
+                                    fdataReset = ViewData["DR"],
+                                     freceived = ViewData["Received"],
+                                    pageSize = ViewData["pageSize"]})">&laquo;</a>
+            </li>
+
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <li class="page-item @(i == currentPage ? "active" : "")">
+                    <a href="@Url.Action("ViewFaultyMeters", new { page = i, fmsn = ViewData["FMSN"],
+                                    fat = ViewData["FAT"],
+                                    fsdn = ViewData["FSDN"],
+                                    issueDescription = ViewData["IssueDescription"],
+                                    status = ViewData["Status"],
+                                    executedDate = ViewData["ExecutedDate"],
+                                    fReportedBy = ViewData["FRB"],
+                                    fdataReset = ViewData["DR"],
+                                     freceived = ViewData["Received"],
+                                    pageSize = ViewData["pageSize"] })">@i</a>
+                </li>
+            }
+
+            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                <a href="@Url.Action("ViewFaultyMeters", new { page = Math.Min(totalPages, currentPage + 1), fmsn = ViewData["FMSN"],
+                                    fat = ViewData["FAT"],
+                                    fsdn = ViewData["FSDN"],
+                                    issueDescription = ViewData["IssueDescription"],
+                                    status = ViewData["Status"],
+                                    executedDate = ViewData["ExecutedDate"],
+                                    fReportedBy = ViewData["FRB"],
+                                    fdataReset = ViewData["DR"],
+                                     freceived = ViewData["Received"],
+                                    pageSize = ViewData["pageSize"] })">&raquo;</a>
+            </li>
+
+            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                <a href="@Url.Action("ViewFaultyMeters", new { page = totalPages, fmsn = ViewData["FMSN"],
+                                    fat = ViewData["FAT"],
+                                    fsdn = ViewData["FSDN"],
+                                    issueDescription = ViewData["IssueDescription"],
+                                    status = ViewData["Status"],
+                                    executedDate = ViewData["ExecutedDate"],
+                                    fReportedBy = ViewData["FRB"],
+                                    fdataReset = ViewData["DR"],
+                                     freceived = ViewData["Received"],
+                                    pageSize = ViewData["pageSize"] })">&raquo;&raquo;</a>
+            </li>
+        }
+    </ul>
+</div> *@
+@section scripts
+{
+    <script>
+
+        function reloadFaultyMeters(page) {
+            var fmsn = $('#MSNFilter').val();
+            var fat = $('#assignedToFilter').val();
+            var fReportedBy = $('#ReportedByFilter').val();
+            var issueDescription = $('#issueDescriptionFilter').val();
+            var status = $('#statusFilter').val();
+            var fdataReset = $('#dataResetFilter').val();
+            var executeddate = $('#executedDate').val();
+            var pageSize = $('#pageSizeSelector').val();
+            var freceived = $('#ReceivedFilter').val();
+            window.location.href = '@Url.Action("ViewFaultyMeters")' + '?page=' + page + '&pageSize=' + pageSize + '&fmsn=' + fmsn + '&fat=' + fat  + '&issueDescription=' + issueDescription + '&status=' + status + '&executeddate=' + executeddate + '&fReportedBy=' + fReportedBy + '&fdataReset=' + fdataReset + '&freceived=' + freceived;
+        }
+        // function exportToPdf(page) {
+        //     var fmsn = $('#MSNFilter').val();
+        //     var fat = $('#assignedToFilter').val();
+        //     var fReportedBy = $('#ReportedByFilter').val();
+        //     var fsdn = $('#subDivisionNameFilter').val();
+        //     var issueDescription = $('#issueDescriptionFilter').val();
+        //     var status = $('#statusFilter').val();
+        // var freceived = $('#ReceivedFilter').val();
+        //     var executeddate = $('#executedDate').val();
+        //     var fdataReset = $('#dataResetFilter').val();
+        //     var pageSize = $('#pageSizeSelector').val();
+        //     window.location.href = '@Url.Action("ExportToPDF")' + '?page=' + page + '&pageSize=' + pageSize + '&frefno=' + frefno + '&fmsn=' + fmsn + '&fat=' + fat + '&fsdn=' + fsdn + '&issueDescription=' + issueDescription + '&status=' + status + '&executeddate=' + executeddate + '&fReportedBy=' + fReportedBy + '&fdataReset=' + fdataReset;
+        // }
+        function exportToExcel(page) {
+            var fmsn = $('#MSNFilter').val();
+            var fat = $('#assignedToFilter').val();
+            var fReportedBy = $('#ReportedByFilter').val();
+            var issueDescription = $('#issueDescriptionFilter').val();
+            var status = $('#statusFilter').val();
+            var executeddate = $('#executedDate').val();
+            var fdataReset = $('#dataResetFilter').val();
+            var pageSize = $('#pageSizeSelector').val();
+            var freceived = $('#ReceivedFilter').val();
+            window.location.href = '@Url.Action("ExportFaultyMeterToExcel")' + '?page=' + page + '&pageSize=' + pageSize + '&fmsn=' + fmsn + '&fat=' + fat + '&issueDescription=' + issueDescription + '&status=' + status + '&executeddate=' + executeddate + '&fReportedBy=' + fReportedBy + '&fdataReset=' + fdataReset + '&freceived=' + freceived;
+        }
+
+        $(document).ready(function () {
+
+            // Handle the click event on the group header
+            $('.group-toggle').on('click', function () {
+                var $this = $(this);
+                var MSN = $this.data('reference');
+                var $groupBody = $('.group-body[data-reference="' + MSN + '"]');
+
+                // Toggle the display of the group body
+                if ($groupBody.is(':visible')) {
+                    $groupBody.hide();
+                    $this.find('.group-icon').text('+');
+                } else {
+                    $groupBody.show();
+                    $this.find('.group-icon').text('-');
+                }
+            });
+            // $('#exportPdfBtn').on('click', function () {
+            //     exportToPdf(@(page));
+            // });
+            $('#exportExcelBtn').on('click', function () {
+                exportToExcel(@(page));
+            });
+            var pageSize = $('#hiddenPageSize').val(); // Get the selected page size from the hidden field
+
+            if (pageSize) {
+                $('#pageSizeSelector').val(pageSize); // Set the selected value
+            }
+
+            $('#pageSizeSelector').on('change', function () {
+                var selectedPageSize = $(this).val();
+                reloadFaultyMeters(1, selectedPageSize); // Reload with the selected page size
+            });
+            $('.filter-dropdown').select2({
+                multiple: true,
+                dropdownAutoWidth: true
+            });
+            $('.c-filters').on('change', function () {
+                reloadFaultyMeters(@(page));
+            });
+
+            $('#MSNFilter').val([@(fmsn)]).trigger('change.select2');
+            $('#assignedToFilter').val([@(fat)]).trigger('change.select2');
+            $('#ReportedByFilter').val([@(fReportedBy)]).trigger('change.select2');
+            $('#statusFilter').val([@(Status)]).trigger('change.select2');
+            $('#dataResetFilter').val([@(fdataReset)]).trigger('change.select2');
+            $('#ReceivedFilter').val([@(freceived)]).trigger('change.select2');
+
+            $('#clearFiltersBtn').on('click', function () {
+                clearFilters();
+            });
+
+            function clearFilters() {
+                $('#MSNFilter').val('').trigger('change');
+                $('#assignedToFilter').val('').trigger('change');
+                $('#ReportedByFilter').val('').trigger('change');
+                $('#issueDescriptionFilter').val('');
+                $('#statusFilter').val('').trigger('change');
+                $('#dataResetFilter').val('').trigger('change');
+                $('#ReceivedFilter').val('').trigger('change');
+                $('#executedDate').val('');
+                reloadFaultyMeters(@(page));
+            }
+        });
+    </script>
+}

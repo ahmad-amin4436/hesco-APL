@@ -1,0 +1,241 @@
+﻿@model HESCO.Models.Complaint.UpdateInstallationLocationModel
+
+@{
+    ViewData["Title"] = "Update Installation Location";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    .is-invalid {
+        border-color: red;
+    }
+</style>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-sm-10">
+            <div class="card" style="background-color:blanchedalmond">
+                <div class="card-body p-3">
+                    <h1 style="text-align:center">Update Location</h1>
+                    <form id="locationForm" asp-action="UpdateInstallationLocation" method="post">
+                        <div class="form-group">
+                            <label asp-for="ReferenceNo" class="control-label"></label>
+                            <select asp-for="ReferenceNo" class="form-control" id="refNoDropdown" asp-items="ViewBag.SelectRefNumber" required>
+                                <option value="">Select ReferenceNo</option>
+                            </select>
+                            <span id="referenceNoError" class="text-danger" style="display:none;">Please select a ReferenceNo first.</span>
+                        </div>
+                        <div class="form-group">
+                            <label asp-for="MSN" class="control-label">MSN</label>
+                            <input type="text" id="msnField" class="form-control" readonly />
+                        </div>
+                        <!-- Hidden fields to store the location -->
+                        <input type="hidden" id="Latitude" name="Latitude" />
+                        <input type="hidden" id="Longitude" name="Longitude" />
+
+                        <div class="form-group">
+                            <input type="submit" id="submitButton" value="Save Current Location" class="btn btn-primary" />
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div>
+    <a href="@Url.Action("ViewComplaint", "Complaint")" class="btn btn-success">Back to List</a>
+</div>
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('#refNoDropdown').select2({
+                placeholder: "Select ReferenceNo",
+                allowClear: true
+            });
+
+            // Fetch MSN when ReferenceNo changes
+            $('#refNoDropdown').change(function () {
+                var selectedRefNo = $(this).val();
+                if (selectedRefNo) {
+                    $.ajax({
+                        url: '@Url.Action("GetMSNByReferenceNo", "Complaint")',
+                        type: 'GET',
+                        data: { referenceNo: selectedRefNo },
+                        success: function (response) {
+                            if (response && response.msn) {
+                                $('#msnField').val(response.msn);
+                            } else {
+                                $('#msnField').val('');
+                            }
+                        },
+                        error: function () {
+                            console.error('Error fetching MSN');
+                        }
+                    });
+                } else {
+                    $('#msnField').val('');
+                }
+            });
+        });
+
+        function getLocation(event) {
+            event.preventDefault();
+
+            var referenceNo = document.getElementById('refNoDropdown').value;
+            var errorMessage = document.getElementById('referenceNoError');
+
+            if (!referenceNo) {
+                errorMessage.style.display = 'block';
+                document.getElementById('refNoDropdown').classList.add('is-invalid');
+                return;
+            } else {
+                errorMessage.style.display = 'none';
+                document.getElementById('refNoDropdown').classList.remove('is-invalid');
+            }
+
+            // Try GPS first with high accuracy enabled
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    onSuccess,
+                    onError,
+                    { 
+                        enableHighAccuracy: true,  // Request the most accurate position available
+                        timeout: 10000,            // Wait up to 10 seconds for a response
+                        maximumAge: 0              // Do not use a cached position
+                    }
+                );
+            } else {
+                console.warn("Geolocation not supported. Trying Google API.");
+                getGoogleLocation();
+            }
+        }
+
+        function onSuccess(position) {
+            document.getElementById('Latitude').value = position.coords.latitude;
+            document.getElementById('Longitude').value = position.coords.longitude;
+
+            console.log("Location fetched via GPS.");
+            document.getElementById('locationForm').submit();
+        }
+
+        function onError(error) {
+            console.warn("Geolocation failed (" + error.message + "). Trying Google API.");
+            getGoogleLocation();
+        }
+
+        function getGoogleLocation() {
+            var apiKey = "AIzaSyBV-87pW9CS3Dc3_Fj8epcNkImPGbK1YA0";  // ⚠️ Replace with your Google API Key
+            $.ajax({
+                url: "https://www.googleapis.com/geolocation/v1/geolocate?key=" + apiKey,
+                type: "POST",
+                success: function (data) {
+                    if (data && data.location) {
+                        document.getElementById('Latitude').value = data.location.lat;
+                        document.getElementById('Longitude').value = data.location.lng;
+
+                        console.log("Location fetched via Google Geolocation API.");
+                        document.getElementById('locationForm').submit();
+                    } else {
+                        alert("Failed to fetch location via Google API.");
+                    }
+                },
+                error: function () {
+                    alert("Error retrieving location from Google API.");
+                }
+            });
+        }
+
+        document.getElementById('submitButton').addEventListener('click', getLocation);
+    </script>
+}
+
+@* @section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('#refNoDropdown').select2({
+                placeholder: "Select ReferenceNo",
+                allowClear: true
+            });
+
+            // Fetch MSN when ReferenceNo changes
+            $('#refNoDropdown').change(function () {
+                var selectedRefNo = $(this).val();
+                if (selectedRefNo) {
+                    $.ajax({
+                        url: '@Url.Action("GetMSNByReferenceNo", "Complaint")',
+                        type: 'GET',
+                        data: { referenceNo: selectedRefNo },
+                        success: function (response) {
+                            if (response && response.msn) {
+                                $('#msnField').val(response.msn);
+                            } else {
+                                $('#msnField').val(''); // Clear field if no data
+                            }
+                        },
+                        error: function () {
+                            console.error('Error fetching MSN');
+                        }
+                    });
+                } else {
+                    $('#msnField').val(''); // Clear field if no selection
+                }
+            });
+        });
+        // Prevent form submission until location is fetched
+        function getLocation(event) {
+            event.preventDefault(); // Prevent the form from submitting
+
+            // Check if a ReferenceNo is selected
+            var referenceNo = document.getElementById('refNoDropdown').value;
+            var errorMessage = document.getElementById('referenceNoError');
+
+            if (!referenceNo) {
+                // Show error message and highlight the dropdown
+                errorMessage.style.display = 'block';
+                document.getElementById('refNoDropdown').classList.add('is-invalid');
+                return; // Stop the function from executing further
+            } else {
+                // Hide error message and remove invalid class if ReferenceNo is selected
+                errorMessage.style.display = 'none';
+                document.getElementById('refNoDropdown').classList.remove('is-invalid');
+            }
+
+            // If ReferenceNo is selected, proceed with geolocation
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(onSuccess, onError);
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        }
+
+        function onSuccess(position) {
+            var latitude = position.coords.latitude;
+            var longitude = position.coords.longitude;
+
+            // For demonstration, log it or show it on the page
+            console.log("Latitude: " + latitude);
+            console.log("Longitude: " + longitude);
+
+            // Store the coordinates in hidden fields
+            document.getElementById('Latitude').value = latitude;
+            document.getElementById('Longitude').value = longitude;
+
+            // Now submit the form after getting location
+            document.getElementById('locationForm').submit();
+        }
+
+        function onError(error) {
+            console.error("Error retrieving location: ", error);
+            alert("Error retrieving location: " + error.message);
+            // Optionally, provide guidance on what to do
+            if (error.code == error.PERMISSION_DENIED) {
+                alert("You have denied the geolocation request. Please allow location access to proceed.");
+            } else if (error.code == error.POSITION_UNAVAILABLE) {
+                alert("Your location could not be determined. Please try again.");
+            } else if (error.code == error.TIMEOUT) {
+                alert("The request to get your location timed out. Please try again.");
+            }
+        }
+
+        // Bind the `getLocation` function to the button
+        document.getElementById('submitButton').addEventListener('click', getLocation);
+    </script>
+}  *@

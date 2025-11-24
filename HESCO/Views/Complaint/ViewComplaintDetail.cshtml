@@ -1,0 +1,479 @@
+﻿@model HESCO.Models.Complaint.ComplaintLogModel
+
+@{
+    ViewData["Title"] = "ViewComplaintDetail";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    string frefno = ViewData["FRefNo"]?.ToString() ?? "";
+    string fmsn = ViewData["FMSN"]?.ToString() ?? "";
+    string fsdn = ViewData["FSDN"]?.ToString() ?? "";
+    string fadd = ViewData["FADD"]?.ToString() ?? "";
+     string fold = ViewData["FOLD"]?.ToString() ?? "";
+    string fnew = ViewData["FNEW"]?.ToString() ?? "";
+    string fat = ViewData["FAT"]?.ToString() ?? "";
+    string fissueDescription = ViewData["IssueDescription"]?.ToString() ?? "";
+    string fopenDescription = ViewData["openDescription"]?.ToString() ?? "";
+    string fStatus = ViewData["Status"]?.ToString() ?? "";
+    int fpageSize = int.Parse(ViewData["pageSize"]?.ToString() ?? "1");
+    string fisFaulty = ViewData["IsFaulty"]?.ToString() ?? "";
+    int fpage = int.Parse(ViewData["page"]?.ToString() ?? "1");
+}
+<style>
+
+/* .image-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.image-item {
+    width: 100px;
+    height: 100px;
+    text-align: center;
+}
+
+.image-item img {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 5px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+}
+ */
+    .image-title {
+        font-size: 12px; /* Smaller font size */
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 5px; /* Adds space between date and image */
+        color: #555; /* Slightly dimmed color */
+    }
+
+    .image-gallery {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px; /* Space between images */
+        justify-content: start; /* Align images properly */
+        margin-bottom: 20px; /* Adds space between images and logs */
+    }
+
+    .image-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        max-width: 150px; /* Limits image width */
+        text-align: center;
+    }
+
+        .image-item img {
+            width: 100px; /* Small image size */
+            height: auto;
+            border-radius: 5px; /* Slightly rounded corners */
+        }
+
+    .table.center_text {
+        width: 100%;
+        margin-top: 20px; /* Adds space between gallery and logs */
+        border-collapse: collapse;
+    }
+
+    .table th, .table td {
+        
+        padding: 8px;
+        border: 1px solid #ddd;
+    }
+
+    .table-bordered td,
+    .table-bordered th {
+        border: 1px solid #dee2e6 !important;
+    }
+
+    .table-bordered {
+        border-collapse: separate !important;
+        border-spacing: 0;
+    }
+
+</style>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
+            <div class="card">
+                <div class="card-body p-3">
+                    <h1 style="text-align:center">Complaint Details</h1>
+                    <hr />
+                    <table class="table table-bordered table-striped">
+                        <tbody>
+                            <tr>
+                                <th>Reference No</th>
+                                <td>@Html.DisplayFor(model => model.Complaint.Reference_No)</td>
+                            </tr>
+                            <tr>
+                                <th>MSN</th>
+                                <td>@Html.DisplayFor(model => model.Complaint.MSN)</td>
+                            </tr>
+                            <tr>
+                                <th>Project</th>
+                                <td>@Html.DisplayFor(model => model.Complaint.ProjectName)</td>
+                            </tr>
+                       @*      <tr>
+                                <th>SubDiv</th>
+                                <td>@Html.DisplayFor(model => model.Complaint.SubDiv)</td>
+                            </tr> *@
+                            <tr>
+                                <th>SubDiv</th>
+                                <td>@Html.DisplayFor(model => model.Complaint.SubDiv)</td>
+                            </tr>
+                           
+                            <tr>
+                                <th>Address</th>
+                                <td>@Html.DisplayFor(model => model.Complaint.Address)</td>
+                            </tr>
+
+                            <tr>
+                                <th>New MSN</th>
+                                <td>@(string.IsNullOrEmpty(Model.Complaint.NewMSN) ? "-" : Model.Complaint.NewMSN)</td>
+                            </tr>
+                            <tr>
+                                <th>Old IMSI</th>
+                                <td>@(string.IsNullOrEmpty(Model.Complaint.Old_Imsi) ? "-" : Model.Complaint.Old_Imsi)</td>
+                            </tr>
+                            <tr>
+                                <th>New IMSI</th>
+                                <td>@(string.IsNullOrEmpty(Model.Complaint.New_Imsi) ? "-" : Model.Complaint.New_Imsi)</td>
+                            </tr>
+                            <tr>
+                                <th>Telco Old</th>
+                                <td>@(string.IsNullOrEmpty(Model.Complaint.Telco_Old) ? "-" : Model.Complaint.Telco_Old)</td>
+                            </tr>
+                            <tr>
+                                <th>Telco New</th>
+                                <td>@(string.IsNullOrEmpty(Model.Complaint.Telco_New) ? "-" : Model.Complaint.Telco_New)</td>
+                            </tr>
+                            <tr>
+                                <th>Reported By</th>
+                                <td>@Html.DisplayFor(model => model.Complaint.ComplaintReportedBy)</td>
+                            </tr>
+                            <tr>
+                                <th>Open Description</th>
+                                <td style="word-wrap: break-word; white-space: normal;">@(string.IsNullOrEmpty(Model.Complaint.Open_Description) ? "-" : Model.Complaint.Open_Description)</td>
+                            </tr>
+                            <tr>
+                                <th>Opened Date</th>
+                                <td>@Html.DisplayFor(model => model.Complaint.OpenedAt)</td>
+                            </tr>
+                            <tr>
+                                <th>Opened By</th>
+                                <td>@Html.DisplayFor(model => model.Complaint.OpenedByUsername)</td>
+                            </tr>
+                            <tr>
+                                <th>Closed Description</th>
+                                <td style="word-wrap: break-word; white-space: normal;">@(string.IsNullOrEmpty(Model.Complaint.Close_Description) ? "-" : Model.Complaint.Close_Description)</td>
+                            </tr>
+                            <tr>
+                                <th>Executed Description</th>
+                                <td style="word-wrap: break-word; white-space: normal;">@(string.IsNullOrEmpty(Model.Complaint.ExecutedDescriptionText) ? "-" : Model.Complaint.ExecutedDescriptionText)</td>
+                            </tr>
+                            <tr>
+                                <th>Execution Date</th>
+                                <td>@(Model.Complaint.Execution_Date == default(DateTime) ? "-" : Model.Complaint.Execution_Date)</td>
+                            </tr>
+                            <tr>
+                                <th>Last Communication Time</th>
+                                <td>@(Model.Complaint.LastCommunicationTime == default(DateTime) ? "-" : Model.Complaint.LastCommunicationTime)</td>
+                            </tr>
+                            <tr>
+                                <th>Mute Date</th>
+                                <td>@(Model.Complaint.MuteDate == default(DateTime) ? "-" : Model.Complaint.MuteDate)</td>
+                            </tr>
+                            <tr>
+                                <th>To Be Check Date</th>
+                                <td>@(Model.Complaint.ToBeCheckDate == default(DateTime) ? "-" : Model.Complaint.ToBeCheckDate)</td>
+                            </tr>
+                            <tr>
+                                <th>Reinstalled Date</th>
+                                <td>@(Model.Complaint.Replaced_Date == default(DateTime) ? "-" : Model.Complaint.Replaced_Date)</td>
+                            </tr>
+                            <tr>
+                                <th>TobeRemoved Date</th>
+                                <td>@(Model.Complaint.TobeRemovedDate == default(DateTime) ? "-" : Model.Complaint.TobeRemovedDate)</td>
+                            </tr>
+                            <tr>
+                                <th>Removed Date</th>
+                                <td>@(Model.Complaint.RemovedDate == default(DateTime) ? "-" : Model.Complaint.RemovedDate)</td>
+                            </tr>
+                            <tr>
+                                <th>Closed Date</th>
+                                <td>@(Model.Complaint.ClosedAt == default(DateTime) ? "-" : Model.Complaint.ClosedAt)</td>
+                            </tr>
+                            <tr>
+                                <th>Returned To Subdivision Date</th>
+                                <td>@(Model.Complaint.ReturnedToSubdivDate == default(DateTime) ? "-" : Model.Complaint.ReturnedToSubdivDate)</td>
+                            </tr>
+                            <tr>
+                                <th>Not Under Warranty Date</th>
+                                <td>@(Model.Complaint.NotUnderWarrantyDate == default(DateTime) ? "-" : Model.Complaint.NotUnderWarrantyDate)</td>
+                            </tr>
+                            <tr>
+                                <th>Under Warranty Date</th>
+                                <td>@(Model.Complaint.UnderWarrantyDate == default(DateTime) ? "-" : Model.Complaint.UnderWarrantyDate)</td>
+                            </tr>
+                            <tr>
+                                <th>With Subdivision Date</th>
+                                <td>@(Model.Complaint.WithSubdivDate == default(DateTime) ? "-" : Model.Complaint.WithSubdivDate)</td>
+                            </tr>
+                            <tr>
+                                <th>Closed By</th>
+                                <td>@(string.IsNullOrEmpty(Model.Complaint.ClosedByUsername) ? "-" : Model.Complaint.ClosedByUsername)</td>
+                            </tr>
+                            <tr>
+                                <th>Status</th>
+                                <td>@Html.DisplayFor(model => model.Complaint.StatusDisplay)</td>
+                            </tr>
+                            <tr>
+                                <th>Remarks</th>
+                                <td>@(string.IsNullOrEmpty(Model.Complaint.Remarks) ? "-" : Model.Complaint.Remarks)</td>
+                            </tr>
+                            <tr>
+                                <th>Assigned To</th>
+                                <td>@(string.IsNullOrEmpty(Model.Complaint.AssignedToUsername) ? "-" : Model.Complaint.AssignedToUsername)</td>
+                            </tr>
+                            <tr>
+                                <th>Is Faulty</th>
+                                <td>@Html.DisplayFor(model => model.Complaint.IsFaultyDisplay)</td>
+                            </tr>                     
+
+                        </tbody>
+                    </table>
+                    <div class="image-section">
+                    @if (Model.Complaint.Images != null && Model.Complaint.Images.Any())
+                    {
+                        <div class="image-gallery">
+                            @foreach (var imagePath in Model.Complaint.Images)
+                            {
+                                var extension = System.IO.Path.GetExtension(imagePath).ToLower();
+                                    var fileName = System.IO.Path.GetFileName(imagePath);
+                                    var imageUrl = Url.Content($"/HESCOPhotos/complaintImages/{System.IO.Path.GetFileName(imagePath)}");
+                                    // Extract date if filename follows YYYYMMDD_xxxxxx.extension format
+                                    string extractedDate = "";
+                                    if (System.Text.RegularExpressions.Regex.IsMatch(fileName, @"^\d{8}_\d+"))
+                                    {
+                                        var datePart = fileName.Substring(0, 8); // Get YYYYMMDD
+                                        extractedDate = $"{datePart.Substring(6, 2)}-{datePart.Substring(4, 2)}-{datePart.Substring(0, 4)}"; // Convert to DD-MM-YYYY
+                                    }
+                                <div class="image-item">
+                                        @if (!string.IsNullOrEmpty(extractedDate))
+                                        {
+                                            <span class="image-title">@extractedDate</span> <!-- Smaller date title -->
+                                        }
+                                    @if (extension == ".pdf")
+                                    {
+                                        // Show a PDF icon with FancyBox for viewing the PDF
+                                            <a href="@imageUrl" data-fancybox="gallery" data-caption="@extractedDate">
+                                            <img src="~/images/pdf-icon.png" alt="PDF Icon" />
+                                        </a>
+                                    }
+                                    else if (extension == ".doc" || extension == ".docx")
+                                    {
+                                        // Show a Word icon and link for downloading or opening in a new tab
+                                            <a href="@imageUrl" target="_blank" data-caption="@extractedDate">
+                                            <img src="~/images/word-icon.png" alt="Word Icon" />
+                                        </a>
+                                    }
+                                    else if (extension == ".xls" || extension == ".xlsx")
+                                    {
+                                        // Show an Excel icon and link for downloading or opening in a new tab
+                                            <a href="@imageUrl" target="_blank" data-caption="@extractedDate">
+                                            <img src="~/images/excel-icon.png" alt="Excel Icon" />
+                                        </a>
+                                    }
+                                    else if (extension == ".xml")
+                                    {
+                                        // Show an XML icon and link for downloading or opening in a new tab
+                                            <a href="@imageUrl" target="_blank" data-caption="@extractedDate">
+                                            <img src="~/images/xml-icon.png" alt="XML Icon" />
+                                        </a>
+                                    }
+                                    else
+                                    {
+                                        // Show the image with FancyBox for viewing
+                                            <a href="@imageUrl" data-fancybox="gallery" data-caption="@extractedDate">
+                                            <img src="@imageUrl" alt="Complaint Image" />
+                                        </a>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p>No images available</p>
+                    }
+                    </div>
+                     @if (Model.Complaint.Locations != null && Model.Complaint.Locations.Any())
+{
+    <div class="d-flex flex-row flex-wrap justify-content-start align-items-start gap-3">
+        @foreach (var location in Model.Complaint.Locations)
+        {
+            string formattedDate = location.LocationAt.ToString("dd-MM-yyyy");
+
+            <div class="text-center me-3" style="width: 150px;">
+                <span class="d-block mb-1 fw-bold">@formattedDate</span>
+
+                <a href="@location.URL" target="_blank">
+                    <img src="~/assets/img/icons/map_preview.png"
+                         alt="Map preview"
+                         class="img-fluid rounded shadow"
+                         style="width: 100%; height: auto;" />
+                </a>
+            </div>
+        }
+    </div>
+}
+else
+{
+    <p>No Location available</p>
+}
+                    <table class="table table-bordered table-striped center_text">
+                        <thead>
+                            <tr>
+                                <th>Action Date</th>
+                                <th>Action Done By</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var log in Model.Logs)
+                            {
+                                <tr>
+                                    <td>@Html.DisplayFor(m => log.ActionDate)</td>
+                                    <td>@Html.DisplayFor(m => log.ActionUser)</td>
+                                    <td>@Html.DisplayFor(m => log.Action)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="row mb-2">
+                    <div class="col-md-12 text-right">
+                        <a href="@Url.Action("ViewComplaint", "Complaint", new {
+  frefno = ViewData["FRefNo"],
+                        fmsn = ViewData["FMSN"],
+                        fat = ViewData["FAT"],
+ fsdn = ViewData["FSDN"],
+  fadd = ViewData["FADD"],
+  fold = ViewData["FOLD"],
+  fnew = ViewData["FNEW"],
+                        fissueDescription = ViewData["IssueDescription"],
+                        fstatus = ViewData["Status"],
+                        fisFaulty = ViewData["IsFaulty"],
+                        fcreatedDate = ViewData["CreatedDate"],
+                        fcloseDate = ViewData["CloseDate"],
+                        fexecuteddateRange = ViewData["ExecutedDateRange"],
+                        fpage = ViewData["page"],
+                         fpageSize=ViewData["pageSize"]
+                    })" class="btn btn-success">Back to List</a>
+
+                        @*  <a href="javascript:void(0);"
+                        onclick="checkMsnExists('@Model.Complaint.MSN');"
+                        class="btn btn-dark">Fault Report</a> *@
+                        <a href="@Url.Action("ViewFaultReportDetail", "Complaint", new {
+                        id = Model.Complaint.Id,
+                        msn = Model.Complaint.MSN,
+ frefno = ViewData["FRefNo"],
+ fsdn = ViewData["FSDN"],
+  fadd = ViewData["FADD"],
+  fold = ViewData["FOLD"],
+  fnew = ViewData["FNEW"],
+                        fmsn = ViewData["FMSN"],
+                        fat = ViewData["FAT"],
+                        fissueDescription = ViewData["IssueDescription"],
+                        fstatus = ViewData["Status"],
+                        fisFaulty = ViewData["IsFaulty"],
+                        fcreatedDate = ViewData["CreatedDate"],
+                        fcloseDate = ViewData["CloseDate"],
+                        fexecuteddateRange = ViewData["ExecutedDateRange"],
+                        fpage = ViewData["page"],
+                         fpageSize=ViewData["pageSize"]
+                    })" class="btn btn-dark">Fault Report</a>
+
+                        @if (Model.Complaint.Status != 3)
+                        {
+                            <a href="@Url.Action("EditComplaintDetails", "Complaint", new
+                                {
+                                    id = Model.Complaint.Id,
+                                    fmsn = ViewData["FMSN"],
+ fsdn = ViewData["FSDN"],
+  fadd = ViewData["FADD"],
+  fold = ViewData["FOLD"],
+  fnew = ViewData["FNEW"],
+                                    fat = ViewData["FAT"],
+                                    fissueDescription = ViewData["IssueDescription"],
+                                    fstatus = ViewData["Status"],
+                                    fisFaulty = ViewData["IsFaulty"],
+                                    fcreatedDate = ViewData["CreatedDate"],
+                                    fcloseDate = ViewData["CloseDate"],
+                                    fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                    fpage = ViewData["page"],
+                                    fpageSize = ViewData["pageSize"]
+                                })" class="btn btn-primary">Edit</a>
+                        }
+                        else
+                        {
+                            <a style="color:white; cursor:not-allowed;"
+                               class="btn btn-primary">Edit</a>
+                        }                       
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@section scripts
+{
+    <script>
+        $(document).ready(function () {
+            if ($.fancybox) {
+                $("[data-fancybox]").fancybox({
+                    buttons: [
+                        "slideShow",
+                        "share",
+                        "zoom",
+                        "fullScreen",
+                        "close"
+                    ],
+                    thumbs: {
+                        autoStart: true
+                    }
+                });
+            } else {
+                console.error("Fancybox is not loaded.");
+            }
+        });
+        function checkMsnExists(msn) {
+            $.ajax({
+                url: '@Url.Action("ViewFaultReportDetail", "Complaint")', // Adjust this URL if needed
+                method: 'GET',
+                data: { msn: msn },
+                success: function (response) {
+                    if (response.success === false) {
+                        // Show alert if MSN is not found
+                        alert(response.message); // This will show an alert message
+                    } else {
+                        // Get the ComplaintId from ViewBag dynamically
+                        var complaintId = '@ViewBag.ComplaintId';  // Get the value from ViewBag
+
+                        // Check if ComplaintId exists
+                        if (complaintId) {
+                            // Proceed with the normal redirection or actions if MSN exists
+                            window.location.href = '@Url.Action("ViewFaultReportDetail", "Complaint")?msn=' + msn + '&id=' + complaintId;
+                        } else {
+                            alert("ComplaintId is not available.");
+                        }
+                    }
+                },
+                error: function () {
+                    alert("An error occurred. Please try again.");
+                }
+            });
+        }
+
+    </script>
+}

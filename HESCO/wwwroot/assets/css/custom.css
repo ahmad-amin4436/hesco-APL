@@ -1,0 +1,211 @@
+/*.sidenav .navbar-nav .nav-item .collapse .nav-link {
+    color: black !important;*/ /* Force text color to black */
+/*}
+
+    .sidenav .navbar-nav .nav-item .collapse .nav-link:hover {
+        color: darkgray !important;*/ /* Optional: Change hover color if desired */
+    /*}
+.card-img-top {
+    width: 100%;
+    height: auto;
+    object-fit: cover;*/ /* Ensures the image covers the card area without distortion */
+/*}
+.center_text {
+    text-align: center;
+}
+
+.table {
+    font-size: 12px; 
+    width: 100%;   
+}
+    .table th {
+        font-weight: bold;
+        font-size: 11px;
+    }
+.table tr, table td {
+    page-break-inside: avoid !important;
+}
+.filter-input {
+    margin-bottom: 10px;
+}*/
+/* CSS to vertically center align text in table cells */
+/*#reportTable td.vertical-center {
+    vertical-align: middle !important;
+}
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.report-title {
+    flex: 1;
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.report-date {
+    flex-shrink: 0;
+    font-size: 14px;
+}*/
+
+
+.sidenav .navbar-nav .nav-item .collapse .nav-link {
+    color: black !important; /* Force text color to black */
+}
+
+    .sidenav .navbar-nav .nav-item .collapse .nav-link:hover {
+        color: darkgray !important; /* Optional: Change hover color if desired */
+    }
+
+.card-img-top {
+    width: 100%;
+    height: auto;
+    object-fit: cover; /* Ensures the image covers the card area without distortion */
+}
+
+.center_text {
+    text-align: center;
+}
+
+.table {
+    font-size: 12px;
+    width: 100%;
+}
+
+    .table th {
+        font-weight: bold;
+        font-size: 11px;
+    }
+
+    .table tr, table td {
+        page-break-inside: avoid !important;
+    }
+
+.filter-input {
+    margin-bottom: 10px;
+}
+/* CSS to vertically center align text in table cells */
+#reportTable td.vertical-center {
+    vertical-align: middle !important;
+}
+
+.report-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.report-title {
+    flex: 1;
+    text-align: center;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.report-date {
+    flex-shrink: 0;
+    font-size: 14px;
+}
+
+/* Fullscreen layout */
+.login-container {
+    display: flex;
+    height: 100vh;
+    Full viewport height width: 100vw;
+    Full viewport width
+}
+
+/* Left side: Background image */
+.login-image {
+    flex: 1;
+    background: url('/assets/img/icons/image.png') no-repeat center center;
+    background-size: cover;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 24px;
+    font-weight: bold;
+    text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+/* Right side: Login form */
+.login-form-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(255, 255, 255, 0.9);
+    Slight transparency padding: 20px;
+}
+
+
+/* Two-column layout */
+.login-box {
+    display: flex;
+    width: 60%;
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+
+/* Right side: Login form */
+.login-form {
+    flex: 1;
+    padding: 40px;
+}
+
+/* Styling for login card */
+.login-card {
+    max-width: 100%;
+    text-align: center;
+}
+
+/* Logo styling */
+.logo {
+    width: 80px;
+    margin-bottom: 10px;
+}
+
+/*Styling for header text*/
+.login-header h3 {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+/*Form styling*/
+.form-group {
+    text-align: left;
+}
+
+/*Remember me checkbox*/
+.form-check {
+    text-align: left;
+}
+
+
+.login-header p {
+    color: black; /* Set text color to black */
+}
+/*Submit button*/
+.btn-primary {
+    background-color: #6c5ce7;
+    border: none;
+    padding: 10px;
+    font-size: 16px;
+    border-radius: 5px;
+    transition: background 0.3s ease;
+}
+
+    .btn-primary:hover {
+        background-color: #5a4bcf;
+    }

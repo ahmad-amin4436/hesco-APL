@@ -1,0 +1,71 @@
+﻿@model HESCO.Models.MeterDataViewModel
+
+@{
+    ViewData["Title"] = "View Meter Detail";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
+            <div class="card">
+                <div class="card-body p-3">
+                    <h1 style="text-align:center">Meter Details</h1>
+                    <hr />
+                    <table class="table table-bordered table-striped">
+                        <tbody>
+                            <tr>
+                                <th>MSN</th>
+                                <td>@Html.DisplayFor(model => model.MSN)</td>
+                            </tr>
+                            <tr>
+                                <th>Project</th>
+                                <td>@Html.DisplayFor(model => model.ProjectName)</td>
+                            </tr>
+                            <tr>
+                                <th>Description</th>
+                                <td>@Html.DisplayFor(model => model.Description)</td>
+                            </tr>
+                            <tr>
+                                <th>Meter Type</th>
+                                <td>@Html.DisplayFor(model => model.MeterType)</td>
+                            </tr>
+                            <tr>
+                                <th>Comments</th>
+                                <td>@(string.IsNullOrEmpty(Model.Comments) ? "-" : Model.Comments)</td>
+                            </tr>
+                            <tr>
+                                <th>Map Flag</th>
+                                <td>@Html.DisplayFor(model => model.MapFlag)</td>
+                            </tr>
+                            <tr>
+                                <th>Status</th>
+                                <td>@Html.DisplayFor(model => model.MeterStatusDisplay)</td>
+                            </tr>
+                            <tr>
+                                <th>Created Date</th>
+                                <td>@Html.DisplayFor(model => model.CreatedAt)</td>
+                            </tr>
+                            <tr>
+                                <th>Created By</th>
+                                <td>@Html.DisplayFor(model => model.CreatedByUsername)</td>                           
+                            </tr>
+                            <tr>
+                                <th>Updated Date</th>
+                                <td>@(Model.UpdatedAt == default(DateTime) ? "-" : Model.UpdatedAt)</td>
+                            </tr>
+                            <tr>
+                                <th>Updated By</th>
+                                <td>@(string.IsNullOrEmpty(Model.UpdatedByUsername) ? "-" : Model.UpdatedByUsername)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div>
+                    <a href="@Url.Action("ViewMeterList", "Meter")" class="btn btn-success">Back to List</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

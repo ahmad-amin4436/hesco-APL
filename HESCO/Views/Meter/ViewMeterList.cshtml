@@ -1,0 +1,515 @@
+﻿@{
+    ViewData["Title"] = "View Meters";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    string Status = ViewData["Status"]?.ToString() ?? "";
+    string msn = ViewData["MSN"]?.ToString() ?? "";
+    string ProjectNameFilter = ViewData["Project"]?.ToString() ?? "";
+    string CreatedBy = ViewData["CreatedBy"]?.ToString() ?? "";
+    string mapflag = ViewData["MapFlag"]?.ToString() ?? "";
+    int page = int.Parse(ViewData["page"]?.ToString() ?? "1");
+    int pageSize = int.Parse(ViewData["pageSize"]?.ToString() ?? "1");
+    int totalRecords = int.Parse(ViewData["totalRecords"]?.ToString() ?? "0");
+    var totalPages = int.Parse(ViewData["totalPages"]?.ToString() ?? "0");
+    string createddate = ViewBag.CreatedDate?.ToString() ?? "";
+}
+<style>
+    /* Target the select2 dropdown options */
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        font-size: 10px !important;
+    }
+
+    .select2-dropdown .select2-results__option {
+        font-size: 10px !important;
+    }
+
+    /* For multiple selection dropdowns */
+    .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+        font-size: 10px !important;
+    }
+
+    .table thead th {
+        padding: 0px;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        display: grid !important;
+    }
+
+    .c-filters {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .table-success {
+        background-color: red !important;
+        color: black !important;
+    }
+
+    .pagination-list {
+        display: flex;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .page-item {
+        margin: 0 2px;
+    }
+
+        .page-item a {
+            text-decoration: none;
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            color: #007bff;
+            display: inline-block;
+        }
+
+        .page-item.active a {
+            background-color: #007bff;
+            color: #fff;
+            border-color: #007bff;
+        }
+
+        .page-item.disabled a {
+            color: #ccc;
+            cursor: not-allowed;
+            border-color: #ddd;
+        }
+
+    .highlighted {
+        background-color: #99ccff;
+    }
+
+    .suggestions-box {
+        position: absolute;
+        background: white;
+        border: 1px solid #ccc;
+        list-style: none;
+        padding: 0;
+        max-height: 150px;
+        overflow-y: auto;
+        display: none;
+        width: 200px;
+    }
+
+    .suggestion-item {
+        padding: 5px;
+        cursor: pointer;
+    }
+
+        .suggestion-item:hover {
+            background-color: #f0f0f0;
+        }
+</style>
+
+<div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
+    <div class="card">
+        <div class="card-body p-3">
+            <h1 style="text-align:center">Meters</h1>
+            <div class="row mb-2">
+                <div class="col-md-12 text-right">
+                    <a href="@Url.Action("CreateMeter", "Meter")" class="btn btn-success">Create New</a>
+                    <button id="exportExcelBtn" class="btn btn-danger">Export to Excel</button>
+                    <button id="clearFiltersBtn" class="btn btn-primary">Clear Filters</button>
+                </div>
+            </div>
+            <div class="row mb-2">
+                <input type="hidden" id="hiddenPageSize" value="@ViewBag.PageSize" />
+                <label style="font-size:14px" for="pageSizeSelector">Items per page:</label>
+                <div class="col-md-1 text-right">
+                    <select id="pageSizeSelector" class="form-control">
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="75">75</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+            <p style="color: blue; font-weight: bold;">
+                Showing @((page * pageSize) - pageSize + 1) to @(Math.Min(totalRecords, page * pageSize)) of @(totalRecords) records
+            </p>
+
+            <table style="font-size:11px" class="table center_text">
+                <thead>
+                    <tr>
+                        <th>MSN</th>
+                        <th>Description</th>
+                        <th>Meter Type</th>
+                        <th>Comments</th>
+                        <th>Status</th>
+                        <th>Created At</th>
+                        <th>Created By</th>
+                        <th>Map Flag</th>
+                        <th>Project Name</th>
+                        <th>MeterMode</th>
+                        <th></th>
+                    </tr>
+                    <tr>
+                        <th class="suggestion-container">
+                            <input type="text" class="filter-input" data-filter="msn" placeholder="Search MSN" value="@ViewData["MSN"]">
+                            <ul id="suggestions-msn" class="suggestions-box" style="display:none;"></ul>
+                        </th>
+                        <th></th>
+                        <th class="suggestion-container">
+                            <input type="text" class="filter-input" data-filter="metertype" placeholder="Search meterType" value="@ViewData["MeterType"]">
+                            <ul id="suggestions-metertype" class="suggestions-box" style="display:none;"></ul>
+                        </th>
+                        <th></th>
+                        <th>
+                            <select id="status" class="filter-dropdown  form-control c-filters" asp-items="ViewBag.SelectStatus"></select>
+                        </th>                       
+                        <th> <input type="date" id="createdAtFilter" name="createdAtFilter" class="form-control c-filters" value="@ViewBag.CreatedDate"></th>
+                        <th>
+                            <select id="createdByFilter" class="filter-dropdown form-control c-filters" asp-items="ViewBag.SelectCreatedBy"></select>
+                        </th>
+                        <th>
+                            <select id="mapflagFilter" class="filter-dropdown  form-control c-filters" style="width:80%" asp-items="ViewBag.SelectMapFlag"></select>
+                        </th>
+                        <th>
+                            <select id="ProjectNameFilter" class="filter-dropdown form-control c-filters" asp-items="ViewBag.SelectProject"></select>
+                        </th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var meter in Model)
+                    {
+                        <tr>
+                            <td>@meter.MSN</td>
+                            <td>@meter.Description</td>
+                            <td>@meter.MeterType</td>
+                            <td>@(string.IsNullOrEmpty(meter.Comments) ? "-" : meter.Comments)</td>
+                            <td>@meter.MeterStatusDisplay</td>
+                            <td>@meter.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                            <td>@meter.CreatedByUsername</td>
+                            <td>@meter.MapFlagDisplay</td>
+                            <td>@meter.ProjectName</td>
+                            <td>@meter.MeterMode</td>
+                            <td>
+                                @if (meter.MapFlag == 1)
+                                {
+                                    <span style="color:grey; cursor:not-allowed;">
+                                        <i class="fas fa-edit "></i>
+                                    </span>
+                                }
+                                else
+                                {
+                                    @Html.Raw("<a href=\"" + Url.Action("EditMeterDetails", new { id = meter.MeterId }) + "\" title=\"EditDetails\"><i class=\"fas fa-edit\" style=\"color:green;\"></i></a>")
+                                }
+                                @Html.Raw("| <a href=\"" + Url.Action("ViewMeterDetails", new { id = meter.MeterId }) + "\" title=\"ViewDetails\"><i class=\"fas fa-eye\" style=\"color:green;\"></i></a> | ")
+                                <a href="@Url.Action("ConfirmDelete", new { id = meter.MeterId })" title="Delete Meter">
+                                    <i class="fas fa-trash-alt" style="color:red;"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div class="pagination">
+    <ul class="pagination-list">
+        @if (ViewData["totalPages"] != null)
+        {
+            var currentPage = (int)ViewData["page"];
+            var totalPage = (int)ViewData["totalPages"];
+
+            // Calculate the range of pages to show
+            var startPage = Math.Max(1, currentPage - 5);
+            var endPage = Math.Min(totalPage, currentPage + 4);
+
+            if (endPage - startPage < 9) // Ensure we have 10 pages shown
+            {
+                if (startPage == 1)
+                {
+                    endPage = Math.Min(totalPage, startPage + 9);
+                }
+                else if (endPage == totalPage)
+                {
+                    startPage = Math.Max(1, endPage - 9);
+                }
+            }
+
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a href="@Url.Action("ViewMeterList", new { page = 1, status = Context.Request.Query["status"],ProjectNameFilter = Context.Request.Query["Project"], msnFilter = Context.Request.Query["msnFilter"], createdByFilter = Context.Request.Query["createdByFilter"], createdAtFilter = Context.Request.Query["createdAtFilter"],  mapFlag = ViewData["MapFlag"],pageSize = ViewData["pageSize"] })">&laquo;&laquo;</a>
+            </li>
+
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a href="@Url.Action("ViewMeterList", new { page = Math.Max(1, currentPage - 1), status = Context.Request.Query["status"],ProjectNameFilter = Context.Request.Query["Project"], msnFilter = Context.Request.Query["msnFilter"], createdByFilter = Context.Request.Query["createdByFilter"], createdAtFilter = Context.Request.Query["createdAtFilter"] ,  mapFlag = ViewData["MapFlag"] , pageSize = ViewData["pageSize"] })">&laquo;</a>
+            </li>
+
+            @for (int i = startPage; i <= endPage; i++)
+            {
+                <li class="page-item @(i == currentPage ? "active" : "")">
+                    <a href="@Url.Action("ViewMeterList", new { page = i, status = Context.Request.Query["status"],ProjectNameFilter = Context.Request.Query["Project"], msnFilter = Context.Request.Query["msnFilter"], createdByFilter = Context.Request.Query["createdByFilter"], createdAtFilter = Context.Request.Query["createdAtFilter"],  mapFlag = ViewData["MapFlag"], pageSize = ViewData["pageSize"] })">@i</a>
+                </li>
+            }
+
+            <li class="page-item @(currentPage == totalPage ? "disabled" : "")">
+                <a href="@Url.Action("ViewMeterList", new { page = Math.Min(totalPage, currentPage + 1), status = Context.Request.Query["status"],ProjectNameFilter = Context.Request.Query["Project"], msnFilter = Context.Request.Query["msnFilter"], createdByFilter = Context.Request.Query["createdByFilter"],  mapFlag = ViewData["MapFlag"], createdAtFilter = Context.Request.Query["createdAtFilter"], pageSize = ViewData["pageSize"] })">&raquo;</a>
+            </li>
+
+            <li class="page-item @(currentPage == totalPage ? "disabled" : "")">
+                <a href="@Url.Action("ViewMeterList", new { page = totalPage, status = Context.Request.Query["status"],ProjectNameFilter = Context.Request.Query["Project"], msnFilter = Context.Request.Query["msnFilter"], createdByFilter = Context.Request.Query["createdByFilter"], createdAtFilter = Context.Request.Query["createdAtFilter"],  mapFlag = ViewData["MapFlag"], pageSize = ViewData["pageSize"] })">&raquo;&raquo;</a>
+            </li>
+        }
+    </ul>
+</div>
+
+@* <div class="pagination">
+    <ul class="pagination-list">
+        @if (ViewData["totalPages"] != null)
+        {
+            var currentPage = (int)ViewData["page"];
+
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a href="@Url.Action("ViewMeterList", new { page = 1,
+                    status = Context.Request.Query["status"],
+                    msnFilter = Context.Request.Query["msnFilter"],
+                    createdByFilter = Context.Request.Query["createdByFilter"],
+                    createdAtFilter = Context.Request.Query["createdAtFilter"],
+                     pageSize = ViewData["pageSize"]
+                    })">&laquo;&laquo;</a>
+            </li>
+
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a href="@Url.Action("ViewMeterList", new { page = Math.Max(1, currentPage - 1),  status = Context.Request.Query["status"],
+                    msnFilter = Context.Request.Query["msnFilter"],
+                    createdByFilter = Context.Request.Query["createdByFilter"],
+                    createdAtFilter = Context.Request.Query["createdAtFilter"],
+                     pageSize = ViewData["pageSize"] })">&laquo;</a>
+            </li>
+
+            @for (int i = 1; i <= totalPages; i++)
+            {
+                <li class="page-item @(i == currentPage ? "active" : "")">
+                    <a href="@Url.Action("ViewMeterList", new { page = i,  status = Context.Request.Query["status"],
+                        msnFilter = Context.Request.Query["msnFilter"],
+                        createdByFilter = Context.Request.Query["createdByFilter"],
+                        createdAtFilter = Context.Request.Query["createdAtFilter"],
+                         pageSize = ViewData["pageSize"] })">@i</a>
+                </li>
+            }
+
+            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                <a href="@Url.Action("ViewMeterList", new { page = Math.Min(totalPages, currentPage + 1), fstatus = Context.Request.Query["status"],
+                    msnFilter = Context.Request.Query["msnFilter"],
+                    createdByFilter = Context.Request.Query["createdByFilter"],
+                    createdAtFilter = Context.Request.Query["createdAtFilter"],
+                     pageSize = ViewData["pageSize"] })">&raquo;</a>
+            </li>
+
+            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                <a href="@Url.Action("ViewMeterList", new { page = totalPages,status = Context.Request.Query["status"],
+                    msnFilter = Context.Request.Query["msnFilter"],
+                    createdByFilter = Context.Request.Query["createdByFilter"],
+                    createdAtFilter = Context.Request.Query["createdAtFilter"],
+                     pageSize = ViewData["pageSize"] })">&raquo;&raquo;</a>
+            </li>
+        }
+    </ul>
+
+</div> *@
+
+@section scripts
+{
+    <script>
+        function exportToExcel(page) {
+            function getFilterValue(selector) {
+                let input = $(selector);
+                return input.data("selected-value") || input.val(); // Prefer selected value over manual input
+            }
+
+            var msnFilter = getFilterValue('.filter-input[data-filter="msn"]');
+            var meterTypeFilter = getFilterValue('.filter-input[data-filter="metertype"]');
+            var status = $('#status').val().join(",");
+            var createdByFilter = $('#createdByFilter').val();
+            var createdAtFilter = $('#createdAtFilter').val();
+            var mapflag = $('#mapflagFilter').val();
+            var ProjectNameFilter = $('#ProjectNameFilter').val();
+            var pageSize = $('#pageSizeSelector').val();
+
+            window.location.href = '@Url.Action("ExportToExcel")'
+                + '?page=' + page
+                + '&pageSize=' + pageSize
+                + '&msnFilter=' + encodeURIComponent(msnFilter)
+                + '&meterTypeFilter=' + encodeURIComponent(meterTypeFilter)
+                + '&createdByFilter=' + encodeURIComponent(createdByFilter)
+                + '&createdAtFilter=' + encodeURIComponent(createdAtFilter)
+                + '&status=' + encodeURIComponent(status)
+                + '&mapflag=' + encodeURIComponent(mapflag)
+                + '&ProjectNameFilter=' + encodeURIComponent(ProjectNameFilter);
+        }
+        function reloadMSN(page) {
+            function getFilterValue(selector) {
+                let input = $(selector);
+                return input.data("selected-value") || input.val(); // Prefer selected value over manual input
+            }
+
+            var msnFilter = getFilterValue('.filter-input[data-filter="msn"]');
+            var meterTypeFilter = getFilterValue('.filter-input[data-filter="metertype"]');
+            var status = $('#status').val().join(",");
+            var createdByFilter = $('#createdByFilter').val();
+            var createdAtFilter = $('#createdAtFilter').val();
+            var mapflag = $('#mapflagFilter').val();
+            var ProjectNameFilter = $('#ProjectNameFilter').val();
+            var pageSize = $('#pageSizeSelector').val();
+
+            window.location.href = '@Url.Action("ViewMeterList")'
+                + '?page=' + page
+                + '&pageSize=' + pageSize
+                + '&msnFilter=' + encodeURIComponent(msnFilter)
+                + '&meterTypeFilter=' + encodeURIComponent(meterTypeFilter)
+                + '&createdByFilter=' + encodeURIComponent(createdByFilter)
+                + '&createdAtFilter=' + encodeURIComponent(createdAtFilter)
+                + '&status=' + encodeURIComponent(status)
+                + '&mapflag=' + encodeURIComponent(mapflag)
+                + '&ProjectNameFilter=' + encodeURIComponent(ProjectNameFilter);
+        }
+        $(document).ready(function () {
+            $(".filter-input").on("keyup", function () {
+                let input = $(this);
+                let filterType = input.data("filter");
+                let searchTerm = input.val();
+
+                if (searchTerm.length < 4) {
+                    $("#suggestions-" + filterType).html("").hide();
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("GetMeterFilteredSuggestions", "Meter")',
+                    type: "GET",
+                    data: { searchTerm: searchTerm, filterType: filterType },
+                    success: function (response) {
+                        let suggestionsBox = $("#suggestions-" + filterType);
+                        suggestionsBox.html("");
+                        if (response.suggestions.length > 0) {
+                            response.suggestions.forEach(item => {
+                                suggestionsBox.append("<li class='suggestion-item'>" + item + "</li>");
+                            });
+                            suggestionsBox.show();
+                        } else {
+                            suggestionsBox.hide();
+                        }
+                    }
+                });
+            });
+
+            $(document).on("click", ".suggestion-item", function () {
+                let selectedValue = $(this).text().trim(); // Get clicked suggestion text
+                let parentInput = $(this).closest(".suggestion-container").find(".filter-input");
+
+                parentInput.val(selectedValue); // Set input value
+                parentInput.data("selected-value", selectedValue); // Store it separately for tracking
+
+                $(".suggestions-box").hide(); // Hide suggestion box
+
+                // Automatically trigger filtering after selecting a suggestion
+                reloadMSN(@(page));  // Reload with selected Subdivision filter
+            });
+
+            var pageSize = $('#hiddenPageSize').val(); // Get the selected page size from the hidden field
+
+            if (pageSize) {
+                $('#pageSizeSelector').val(pageSize); // Set the selected value
+            }
+            $('#exportExcelBtn').on('click', function () {
+                exportToExcel(@(page));
+            });
+            $('#pageSizeSelector').on('change', function () {
+                var selectedPageSize = $(this).val();
+                reloadMSN(1, selectedPageSize); // Reload with the selected page size
+            });
+            $('.filter-dropdown').select2({
+                multiple: true,
+                dropdownAutoWidth: true
+            });
+            $('.c-filters').on('change', function () {
+                reloadMSN(@(page));
+            });
+
+
+            // Set the selected values for the select element
+            // $('#msnFilter').val([@(msn)]).trigger('change.select2');
+            $('#status').val([@Html.Raw(Json.Serialize(Status.Split(",").ToList()))]).trigger('change.select2');
+            // $('#status').val([@(Status)]).trigger('change.select2');
+            $('#createdByFilter').val([@(CreatedBy)]).trigger('change.select2');
+            $('#mapflagFilter').val([@(mapflag)]).trigger('change.select2');
+            $('#ProjectNameFilter').val([@(ProjectNameFilter)]).trigger('change.select2');
+
+            $('#clearFiltersBtn').on('click', function () {
+                var pageSize = $('#pageSizeSelector').val();
+                window.location.href = '@Url.Action("ViewMeterList")' + '?pageSize=' + pageSize;
+            });
+        });
+
+//         function reloadMSN(page) {
+//             var status = $('#status').val();
+//             var msnFilter = $('#msnFilter').val();
+//             var createdByFilter = $('#createdByFilter').val();
+//             var createdAtFilter = $('#createdAtFilter').val();
+//             var ProjectNameFilter = $('#ProjectNameFilter').val();
+//             var mapflag = $('#mapflagFilter').val();
+//             var pageSize = $('#pageSizeSelector').val();
+//             window.location.href = '@Url.Action("ViewMeterList")' + '?page=' + page + '&pageSize=' + pageSize + '&status=' + status + '&msnFilter=' + msnFilter + '&createdByFilter=' + createdByFilter + '&createdAtFilter=' + createdAtFilter + '&mapflag=' + mapflag + '&ProjectNameFilter=' + ProjectNameFilter;
+//         }
+//         function exportToExcel(page) {
+//             var status = $('#status').val();
+//             var msnFilter = $('#msnFilter').val();
+//             var createdByFilter = $('#createdByFilter').val();
+//             var createdAtFilter = $('#createdAtFilter').val();
+//             var ProjectNameFilter = $('#ProjectNameFilter').val();
+//             var mapflag = $('#mapflagFilter').val();
+//             var pageSize = $('#pageSizeSelector').val();
+//             window.location.href = '@Url.Action("ExportToExcel")' + '?page=' + page + '&pageSize=' + pageSize + '&status=' + status + '&msnFilter=' + msnFilter + '&createdByFilter=' + createdByFilter + '&createdAtFilter=' + createdAtFilter + '&mapflag=' + mapflag + '&ProjectNameFilter=' + ProjectNameFilter;
+//         }
+//         $(document).ready(function () {
+
+//             var pageSize = $('#hiddenPageSize').val(); // Get the selected page size from the hidden field
+
+//             if (pageSize) {
+//                 $('#pageSizeSelector').val(pageSize); // Set the selected value
+//             }
+//             $('#exportExcelBtn').on('click', function () {
+//                 exportToExcel(@(page));
+//             });
+//             $('#pageSizeSelector').on('change', function () {
+//                 var selectedPageSize = $(this).val();
+//                 reloadMSN(1, selectedPageSize); // Reload with the selected page size
+//             });
+//             $('.filter-dropdown').select2({
+//                 multiple: true,
+//                 dropdownAutoWidth: true
+//             });
+//             $('.c-filters').on('change', function () {
+//                 reloadMSN(@(page));
+//             });
+
+
+//             // Set the selected values for the select element
+//             $('#msnFilter').val([@(msn)]).trigger('change.select2');
+//             $('#status').val([@(Status)]).trigger('change.select2');
+//             $('#createdByFilter').val([@(CreatedBy)]).trigger('change.select2');
+//             $('#mapflagFilter').val([@(mapflag)]).trigger('change.select2');
+//             $('#ProjectNameFilter').val([@(ProjectNameFilter)]).trigger('change.select2');
+
+//             $('#clearFiltersBtn').on('click', function () {
+//                 clearFilters();
+//             });
+
+//             function clearFilters() {
+//                 $('#msnFilter').val('').trigger('change');
+//                 $('#status').val('').trigger('change');
+//                 $('#createdByFilter').val('').trigger('change');
+//                 $('#mapflagFilter').val('').trigger('change');
+//                 $('#ProjectNameFilter').val('').trigger('change');
+//                 $('#createdAtFilter').val('');
+//                 reloadMSN(@(page));
+//             }
+//         });
+    </script>
+}
+
+

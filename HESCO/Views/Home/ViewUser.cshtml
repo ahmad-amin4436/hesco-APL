@@ -1,0 +1,288 @@
+﻿@model X.PagedList.IPagedList<HESCO.Models.UserData>
+@using X.PagedList.Mvc.Core
+@using X.PagedList
+
+@{
+    ViewData["Title"] = "View User";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<style>
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 20px;
+    }
+
+        .pagination .page-item.active .page-link {
+            background-color: #28a745; /* Green color */
+            border-color: #28a745;
+            color: white;
+        }
+
+        .pagination .page-link {
+            color: #28a745;
+            border-radius: 5px;
+            margin: 2px;
+        }
+
+            .pagination .page-link:hover {
+                background-color: #218838;
+                color: white;
+            }
+
+        .pagination .page-item.disabled .page-link {
+            color: #ccc;
+            pointer-events: none;
+        }
+
+    .suggestions-box {
+        position: absolute;
+        background: white;
+        border: 1px solid #ccc;
+        list-style: none;
+        padding: 0;
+        max-height: 200px; /* Increased height for more visibility */
+        overflow-y: auto;
+        display: none;
+        width: auto;
+        min-width: 200px; /* Prevents very small boxes */
+        z-index: 1000;
+    }
+
+    .suggestion-item {
+        padding: 8px;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+        .suggestion-item:hover {
+            background-color: #f0f0f0;
+        }
+</style>
+
+<div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
+    <div class="card">
+        <div class="card-body p-3">
+            <h1 style="text-align:center">Users</h1>
+            <div class="row mb-2">
+                <div class="col-md-12 text-right">
+                    <a href="@Url.Action("CreateUser", "Home")" class="btn btn-success">Create New</a>
+                    <button id="clearFiltersBtn" class="btn btn-primary">Clear Filters</button>
+                </div>
+            </div>
+
+            <table class="table center_text">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Name</th>
+                        <th>User Role</th>
+                        <th>Team</th>
+                        <th>Actions</th>
+                    </tr>
+                    <tr>
+                        <th class="suggestion-container">
+                            <input type="text" class="filter-input" data-filter="username" placeholder="Search Username">
+                            <ul id="suggestions-username" class="suggestions-box" style="display:none;"></ul>
+                        </th>
+                        <th></th>
+                        <th class="suggestion-container">
+                            <input type="text" class="filter-input" data-filter="userRole" placeholder="Search User Role">
+                            <ul id="suggestions-userRole" class="suggestions-box" style="display:none;"></ul>
+                        </th>
+                        <th class="suggestion-container">
+                            <input type="text" class="filter-input" data-filter="team" placeholder="Search Team">
+                            <ul id="suggestions-team" class="suggestions-box" style="display:none;"></ul>
+                        </th>
+                        <th></th>
+                    </tr>
+
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td>@item.Username</td>
+                            <td>@item.Name</td>
+                            <td>@item.UserRole</td>
+                            <td>@item.Team</td>
+                            <td>
+                                <a href="@Url.Action("EditUserDetails", new { id = item.UserId })" title="Edit"><i class="fas fa-edit" style="color:green;"></i></a> |
+                                <a href="@Url.Action("ViewUserDetail", new { id = item.UserId })" title="View"><i class="fas fa-eye" style="color:green;"></i></a> |
+                                <a href="@Url.Action("ChangePassword", new { id = item.UserId })" title="Change Password"><i class="fas fa-key" style="color:green;"></i></a> |
+                                <a href="@Url.Action("DeleteUser", new { id = item.UserId })" title="Delete" onclick="return confirm('Are you sure?');"><i class="fas fa-trash-alt" style="color:red;"></i></a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+
+            <!-- Pagination controls -->
+            <div class="d-flex justify-content-center mt-3">
+                <ul class="pagination">
+                    @Html.PagedListPager(Model, page => Url.Action("ViewUser", new { page }),
+                             new PagedListRenderOptions
+                    {
+                        UlElementClasses = new[] { "pagination", "pagination-lg" },
+                        LiElementClasses = new[] { "page-item" },
+                        PageClasses = new[] { "page-link" },
+                        LinkToFirstPageFormat = "<<",
+                        LinkToPreviousPageFormat = "<",
+                        LinkToNextPageFormat = ">",
+                        LinkToLastPageFormat = ">>",
+                        MaximumPageNumbersToDisplay = 10,
+                        DisplayLinkToFirstPage = PagedListDisplayMode.Always,
+                        DisplayLinkToLastPage = PagedListDisplayMode.Always,
+                        DisplayLinkToPreviousPage = PagedListDisplayMode.Always,
+                        DisplayLinkToNextPage = PagedListDisplayMode.Always,
+                        DisplayEllipsesWhenNotShowingAllPageNumbers = true
+                    })
+                </ul>
+            </div>
+
+
+
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script>
+        function reloadUsers(page = 1) {
+            function getFilterValue(selector) {
+                let input = $(selector);
+                return input.data("selected-value") || input.val(); // Prefer selected value over manual input
+            }
+
+            var usernameFilter = getFilterValue('.filter-input[data-filter="username"]');
+            var userRoleFilter = getFilterValue('.filter-input[data-filter="userRole"]');
+            var teamFilter = getFilterValue('.filter-input[data-filter="team"]');
+
+            window.location.href = '@Url.Action("ViewUser")'
+                + '?page=' + page
+                + '&usernameFilter=' + encodeURIComponent(usernameFilter)
+                + '&userRoleFilter=' + encodeURIComponent(userRoleFilter)
+                + '&teamFilter=' + encodeURIComponent(teamFilter);
+        }
+        $(document).ready(function () {
+            $(".filter-input").on("keyup", function () {
+                let input = $(this);
+                let filterType = input.data("filter");
+                let searchTerm = input.val();
+
+                if (searchTerm.length < 3) {
+                    $("#suggestions-" + filterType).html("").hide();
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("GetUserSuggestions", "Home")',
+                    type: "GET",
+                    data: { searchTerm: searchTerm, filterType: filterType },
+                    success: function (response) {
+                        let suggestionsBox = $("#suggestions-" + filterType);
+                        suggestionsBox.html(""); // Clear old suggestions
+
+                        if (response.suggestions.length > 0) {
+                            response.suggestions.forEach(item => {
+                                suggestionsBox.append("<li class='suggestion-item'>" + item + "</li>");
+                            });
+                            suggestionsBox.show();
+                        } else {
+                            suggestionsBox.hide();
+                        }
+                    }
+                });
+            });
+
+            // Prevent the suggestion box from disappearing when hovering over it
+            $(".suggestions-box").on("mouseenter", function () {
+                $(this).data("keepVisible", true);
+            }).on("mouseleave", function () {
+                $(this).data("keepVisible", false);
+                setTimeout(() => {
+                    if (!$(this).data("keepVisible")) {
+                        $(this).hide();
+                    }
+                }, 200);
+            });
+
+            // Click on suggestion to select it
+            $(document).on("click", ".suggestion-item", function () {
+                let selectedValue = $(this).text().trim();
+                let parentInput = $(this).closest(".suggestion-container").find(".filter-input");
+
+                parentInput.val(selectedValue);
+                parentInput.data("selected-value", selectedValue);
+
+                $(".suggestions-box").hide(); // Hide all suggestion boxes
+
+                reloadUsers();  // Apply the filter after selecting a suggestion
+            });
+
+            // Hide suggestion box when clicking outside
+            $(document).on("click", function (event) {
+                if (!$(event.target).closest(".suggestion-container").length) {
+                    $(".suggestions-box").hide();
+                }
+            });
+        });
+        $('#clearFiltersBtn').on('click', function () {
+                var pageSize = $('#pageSizeSelector').val();
+                window.location.href = '@Url.Action("ViewUser")' + '?pageSize=' + pageSize;
+            });
+        // $(document).ready(function () {
+        //     $(".filter-input").on("keyup change", function () {
+        //         reloadUsers();
+        //     });
+
+        //     $(".filter-input").on("keyup", function () {
+        //         let input = $(this);
+        //         let filterType = input.data("filter");
+        //         let searchTerm = input.val();
+
+        //         if (searchTerm.length < 3) {
+        //             $("#suggestions-" + filterType).html("").hide();
+        //             return;
+        //         }
+
+        //         $.ajax({
+        //             url: '@Url.Action("GetUserSuggestions", "Home")',
+        //             type: "GET",
+        //             data: { searchTerm: searchTerm, filterType: filterType },
+        //             success: function (response) {
+        //                 let suggestionsBox = $("#suggestions-" + filterType);
+        //                 suggestionsBox.html("");
+        //                 if (response.suggestions.length > 0) {
+        //                     response.suggestions.forEach(item => {
+        //                         suggestionsBox.append("<li class='suggestion-item'>" + item + "</li>");
+        //                     });
+        //                     suggestionsBox.show();
+        //                 } else {
+        //                     suggestionsBox.hide();
+        //                 }
+        //             }
+        //         });
+        //     });
+
+        //     $(document).on("click", ".suggestion-item", function () {
+        //         let selectedValue = $(this).text().trim();
+        //         let parentInput = $(this).closest(".suggestion-container").find(".filter-input");
+
+        //         parentInput.val(selectedValue);
+        //         parentInput.data("selected-value", selectedValue);
+
+        //         $(".suggestions-box").hide();
+
+        //         reloadUsers();  // Apply the filter after selecting a suggestion
+        //     });
+        //     $('#clearFiltersBtn').on('click', function () {
+        //         var pageSize = $('#pageSizeSelector').val();
+        //         window.location.href = '@Url.Action("ViewUser")' + '?pageSize=' + pageSize;
+        //     });
+        // });
+    </script>
+}
+
+
+

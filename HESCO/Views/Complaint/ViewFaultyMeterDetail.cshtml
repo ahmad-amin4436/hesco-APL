@@ -1,0 +1,289 @@
+﻿@model HESCO.Models.Complaint.FaultyMeterModel
+
+@{
+    ViewData["Title"] = "ViewFaultyMeterDetail";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    string fmsn = ViewData["FMSN"]?.ToString() ?? "";
+    string fat = ViewData["FAT"]?.ToString() ?? "";
+    // string fsdn = ViewData["FSDN"]?.ToString() ?? "";
+    string issueDescription = ViewData["IssueDescription"]?.ToString() ?? "";
+    string Status = ViewData["Status"]?.ToString() ?? "";
+    string fReportedBy = ViewData["FRB"]?.ToString() ?? "";
+    string fdataReset = ViewData["DR"]?.ToString() ?? "";
+    int page = int.Parse(ViewData["page"]?.ToString() ?? "1");
+    int pageSize = int.Parse(ViewData["pageSize"]?.ToString() ?? "1");
+
+}
+<style>
+    .image-section {
+        margin-bottom: 20px;
+        padding: 15px;
+        background-color: #f9f9f9;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+    }
+
+    .image-gallery {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+
+    .image-item {
+        width: 100px;
+        text-align: center;
+    }
+
+    .image-title {
+        font-size: 12px; /* Smaller font size */
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 5px; /* Adds space between date and image */
+        color: #555; /* Slightly dimmed color */
+    }
+    .thumbnail {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        border-radius: 5px;
+        box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+    }
+</style>
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
+            <div class="card">
+                <div class="card-body p-3">
+                    <h1 style="text-align:center">Faulty Meter Details</h1>
+                    <hr />
+                    <table class="table table-bordered table-striped">
+                        <tbody>
+                            <tr>
+                                <th>MSN</th>
+                                <td>@Html.DisplayFor(model => model.MSN)</td>
+                            </tr>
+                            <tr>
+                                <th>Project</th>
+                                <td>@Html.DisplayFor(model => model.ProjectName)</td>
+                            </tr>
+                          @*   <tr>
+                                <th>SubDiv</th>
+                                <td>@(string.IsNullOrEmpty(Model.SubDiv) ? "-" : Model.SubDiv)</td>
+                            </tr> *@
+                            <tr>
+                                <th>Reported Description</th>
+                                <td style="word-wrap: break-word; white-space: normal;">@Html.DisplayFor(model => model.OpenDescription)</td>
+                            </tr>
+                            <tr>
+                                <th>Reported Date</th>
+                                <td>@Html.DisplayFor(model => model.OpenedAt)</td>
+                            </tr>
+                            <tr>
+                                <th>Reported By</th>
+                                <td>@Html.DisplayFor(model => model.OpenedBy)</td>
+                            </tr>
+                            <tr>
+                                <th>Assigned To</th>
+                                <td>@Html.DisplayFor(model => model.AssignedTo)</td>
+                            </tr>
+                            <tr>
+                                <th>Status</th>
+                                <td>@Html.DisplayFor(model => model.StatusDisplay)</td>
+                            </tr>
+                            <tr>
+                                <th>Data Reset</th>
+                                <td>@Html.DisplayFor(model => model.DataResetDisplay)</td>
+                            </tr>
+                            <tr>
+                                <th>Received</th>
+                                <td>@Html.DisplayFor(model => model.ReceivedDisplay)</td>
+                            </tr>
+                            <tr>
+                                <th>Received Date</th>
+                                <td>@(Model.ReceivedDate == default(DateTime) ? "-" : Model.ReceivedDate)</td>
+                            </tr>
+                            <tr>
+                                <th>Field Fault Description</th>
+                                <td style="word-wrap: break-word; white-space: normal;">@Html.DisplayFor(model => model.Fault_Description)</td>
+                            </tr>
+                            <tr>
+                                <th>Execution Date</th>
+                                <td>@(Model.ExecutedAt == default(DateTime) ? "-" : Model.ExecutedAt)</td>
+                            </tr>
+                            <tr>
+                                <th>Executed By</th>
+                                <td>@Html.DisplayFor(model => model.ExecutedBy)</td>
+                            </tr>
+                            <tr>
+                                <th>QC Remarks</th>
+                                <td style="word-wrap: break-word; white-space: normal;">@Html.DisplayFor(model => model.Remarks)</td>
+                            </tr>
+                            <tr>
+                                <th>Verified Date</th>
+                                <td>@(Model.VerifiedAt == default(DateTime) ? "-" : Model.VerifiedAt)</td>
+                            </tr>
+                            <tr>
+                                <th>Verified By</th>
+                                <td>@Html.DisplayFor(model => model.VerifiedBy)</td>
+                            </tr>
+                            <tr>
+                                <th>Dispatched Remarks</th>
+                                <td style="word-wrap: break-word; white-space: normal;">@Html.DisplayFor(model => model.Dispatched_Remarks)</td>
+                            </tr>
+                            <tr>
+                                <th>Dispatched Date</th>
+                                <td>@(Model.DispatchedAt == default(DateTime) ? "-" : Model.DispatchedAt)</td>
+                            </tr>
+                            <tr>
+                                <th>Dispatched By</th>
+                                <td>@Html.DisplayFor(model => model.DispatchedBy)</td>
+                            </tr>
+                          @*   <tr>
+                                <th>Document/Images</th>
+                                <td>
+                                    @if (Model.Images != null && Model.Images.Any())
+                                    {
+                                        <div class="image-gallery">
+                                            @foreach (var imagePath in Model.Images)
+                                            {
+                                                var extension = System.IO.Path.GetExtension(imagePath).ToLower();
+                                                @* var imageUrl = Url.Content($"~/FaultImages/{System.IO.Path.GetFileName(imagePath)}"); 
+                                                var imageUrl = Url.Content($"/ComplaintPhotos/FaultImages/{System.IO.Path.GetFileName(imagePath)}");
+
+                                                if (extension == ".pdf")
+                                                {
+                                                    // Show a PDF icon with FancyBox for viewing the PDF
+                                                    <a href="@imageUrl" data-fancybox="gallery" data-caption="PDF Document">
+                                                        <img src="~/images/pdf-icon.png" alt="PDF Icon" style="width: 100px; height: 100px; margin-right: 10px;" />
+                                                    </a>
+                                                }
+                                                else if (extension == ".doc" || extension == ".docx")
+                                                {
+                                                    // Show a Word icon and link for downloading or opening in a new tab
+                                                    <a href="@imageUrl" target="_blank">
+                                                        <img src="~/images/word-icon.png" alt="Word Icon" style="width: 100px; height: 100px; margin-right: 10px;" />
+                                                    </a>
+                                                }
+                                                else if (extension == ".xls" || extension == ".xlsx")
+                                                {
+                                                    // Show an Excel icon and link for downloading or opening in a new tab
+                                                    <a href="@imageUrl" target="_blank">
+                                                        <img src="~/images/excel-icon.png" alt="Excel Icon" style="width: 100px; height: 100px; margin-right: 10px;" />
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    // Show the image with FancyBox for viewing
+                                                    <a href="@imageUrl" data-fancybox="gallery" data-caption="Fault Image">
+                                                        <img src="@imageUrl" alt="Fault Image" style="width: 100px; height: 100px; margin-right: 10px;" />
+                                                    </a>
+                                                }
+                                            }
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <p>No images available</p>
+                                    }
+                                </td>
+                            </tr> *@
+                        </tbody>
+                    </table>
+                    <div class="image-section">
+                        <h4>Documents / Images</h4>
+                        <div class="image-gallery">
+                            @if (Model.Images != null && Model.Images.Any())
+                            {
+                                @foreach (var imagePath in Model.Images)
+                                {
+                                    var fileName = System.IO.Path.GetFileName(imagePath);
+                                    var extension = System.IO.Path.GetExtension(imagePath).ToLower();
+                                    var imageUrl = Url.Content($"/HESCOPhotos/FaultImages/{System.IO.Path.GetFileName(imagePath)}");
+                                    string extractedDate = "";
+                                    if (System.Text.RegularExpressions.Regex.IsMatch(fileName, @"^\d{8}_\d+"))
+                                    {
+                                        var datePart = fileName.Substring(0, 8); // Get YYYYMMDD
+                                        extractedDate = $"{datePart.Substring(6, 2)}-{datePart.Substring(4, 2)}-{datePart.Substring(0, 4)}"; // Convert to DD-MM-YYYY
+                                    }
+                                    <div class="image-item">
+                                        <div style="margin-bottom:10px;">
+                                            @if (!string.IsNullOrEmpty(extractedDate))
+                                            {
+                                                <span class="image-title">@extractedDate</span> <!-- Smaller date title -->
+                                            }
+                                        </div>
+                                        @if (extension == ".pdf")
+                                        {
+                                            <a href="@imageUrl" data-fancybox="gallery" data-caption="PDF Document">
+                                                <img src="~/images/pdf-icon.png" alt="PDF Icon" class="thumbnail" />
+                                            </a>
+                                        }
+                                        else if (extension == ".doc" || extension == ".docx")
+                                        {
+                                            <a href="@imageUrl" target="_blank">
+                                                <img src="~/images/word-icon.png" alt="Word Icon" class="thumbnail" />
+                                            </a>
+                                        }
+                                        else if (extension == ".xls" || extension == ".xlsx")
+                                        {
+                                            <a href="@imageUrl" target="_blank">
+                                                <img src="~/images/excel-icon.png" alt="Excel Icon" class="thumbnail" />
+                                            </a>
+                                        }
+                                        else
+                                        {
+                                            <a href="@imageUrl" data-fancybox="gallery" data-caption="Fault Image">
+                                                <img src="@imageUrl" alt="Fault Image" class="thumbnail" />
+                                            </a>
+                                        }
+                                    </div>
+                                }
+                            }
+                            else
+                            {
+                                <p>No images available</p>
+                            }
+                        </div>
+                    </div>
+
+                </div>
+                <div>
+                    <a href="@Url.Action("ViewFaultyMeters", "Complaint", new {
+                        fmsn = ViewData["FMSN"],
+                        fat = ViewData["FAT"],
+                        issueDescription = ViewData["IssueDescription"],
+                        status = ViewData["Status"],
+                        executedDate = ViewData["ExecutedDate"],
+                        fReportedBy = ViewData["FRB"],
+                        page = ViewData["page"],
+                        fdataReset = ViewData["DR"],
+                        pageSize = ViewData["pageSize"]
+                    })" class="btn btn-success">Back to List</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@section scripts
+{
+    <script>
+        $(document).ready(function () {
+            if ($.fancybox) {
+                $("[data-fancybox]").fancybox({
+                    buttons: [
+                        "slideShow",
+                        "share",
+                        "zoom",
+                        "fullScreen",
+                        "close"
+                    ],
+                    thumbs: {
+                        autoStart: true
+                    }
+                });
+            } else {
+                console.error("Fancybox is not loaded.");
+            }
+        });
+    </script>
+}

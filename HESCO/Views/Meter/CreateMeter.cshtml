@@ -1,0 +1,206 @@
+﻿@model HESCO.Models.MeterData
+
+@{
+    ViewData["Title"] = "Create Meter";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-sm-10">
+            <div class="card" style="background-color:blanchedalmond">
+                <div class="card-body p-3">
+                    <h1 style="text-align:center">Create Meter</h1>
+                    <input type="hidden" id="HiddenMeterType" name="MeterType" />
+
+                    <form id="createMeterForm" asp-action="CreateMeter" enctype="multipart/form-data">
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                        <div asp-validation-summary="All" class="alert-danger"></div>
+
+                        <!-- Project Dropdown: Always visible -->
+                        <div class="form-group">
+                            <label asp-for="Project" class="control-label"></label>
+                            <select asp-for="Project" class="form-control" asp-items="ViewBag.SelectProject" required>
+                                <option value="">Select a Project</option>
+                            </select>
+                            <span asp-validation-for="Project" class="text-danger"></span>
+                        </div>
+
+                        <!-- Other fields: Initially hidden -->
+                        <div id="meterFields" style="display:none;">
+                            <div class="form-group">
+                                <label asp-for="MSN" class="control-label"></label>
+                                <input asp-for="MSN" class="form-control" required />
+                                <span asp-validation-for="MSN" class="text-danger"></span>
+                            </div>
+                            <div class="form-group">
+                                <label asp-for="Description" class="control-label"></label>
+                                <input asp-for="Description" class="form-control" readonly />
+                                <span asp-validation-for="Description" class="text-danger"></span>
+                            </div>
+                            <div class="form-group">
+                                <label asp-for="Comments" class="control-label"></label>
+                                <input asp-for="Comments" class="form-control" />
+                                <span asp-validation-for="Comments" class="text-danger"></span>
+                            </div>
+                            <div id="remainingFields" style="display:none;">
+
+                                <!-- AMI only (readonly textbox) -->
+                                <div id="meterTypeTextSection" style="display:none;">
+                                    <label>Meter Type</label>
+                                    <input type="text" id="MeterTypeText" name="MeterTypeText" class="form-control" readonly />
+                                </div>
+
+                                <!-- Conventional only (dropdown) -->
+                                <div id="MeterType_ddl" style="display:none;">
+                                    <label asp-for="MeterType" class="control-label"></label>
+                                    <select id="MeterType" name="MeterType" class="form-control">
+                                      
+                                    </select>
+                                </div>
+                                <div class="form-group" hidden>
+                                    <label>Meter Mode</label>
+                                    <input type="text" id="MeterMode" name="MeterMode" class="form-control" readonly required />
+                                    <span asp-validation-for="MeterMode" class="text-danger"></span>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <input type="submit" value="Create" class="btn btn-primary" />
+                            </div>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div>
+        <a href="@Url.Action("ViewMeterList", "Meter")" class="btn btn-success">Back to List</a>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+            $(document).ready(function () {
+            var globalMode = null; // store mode globally
+
+            $('#Project').on('change', function () {
+                var projectId = $(this).val();
+
+                if (!projectId) {
+                    $("#MeterMode").val("");
+                    $('#meterFields').slideUp();
+                    return;
+                }
+
+                $.ajax({
+                    url: '@Url.Action("GetMeterModeByProject", "Meter")',
+                    type: 'GET',
+                    data: { projectId: projectId },
+                    success: function (data) {
+                        if (data.success) {
+                            var meterMode = data.meterMode;
+                            globalMode = meterMode;
+
+                            if (meterMode == 1) { // Conventional
+                                $("#MeterMode").val("Conventional");
+                                $("#meterTypeTextSection").hide();
+                                $("#MeterType_ddl").show();
+                                LoadMeterMode(projectId);
+                                $("#MeterType").prop('required', true);
+                                $("#Description").val("Conventional");
+                            } else if (meterMode == 2) { // AMI
+                                $("#MeterMode").val("AMI");
+                                $("#MeterType_ddl").hide();
+                                $("#meterTypeTextSection").show();
+                                $("#Description").val("");
+                                $("#MeterType").prop('required', false);
+                            }
+
+                            $("#meterFields").slideDown();
+                            $("#remainingFields").slideDown();
+                        } else {
+                            alert("Failed to retrieve MeterMode.");
+                        }
+                    },
+                    error: function () {
+                        alert("Error retrieving MeterMode.");
+                    }
+                });
+            });
+
+            // MSN keyup for AMI
+            $("#MSN").on("keyup change", function () {
+                if (globalMode != 2) return;
+
+                var msn = $(this).val().trim();
+
+                if (msn.length < 4) {
+                    $("#MeterTypeText").val("");
+                    $("#HiddenMeterType").val("");
+                    $("#Description").val("");
+                    return;
+                }
+
+                let prefix = msn.substring(0, 4);
+                let last4 = msn.slice(-4);
+                $("#Description").val("Meter - " + last4);
+
+                $.ajax({
+                    url: '@Url.Action("GetMeterType", "Meter")',
+                    type: 'GET',
+                    data: { prefix: prefix },
+                    success: function (meterType) {
+                        meterType = meterType || "";
+                        if (meterType.trim() === "" || meterType.trim().toLowerCase() === "unknown") {
+                            $("#MeterTypeText").val("");
+                            $("#HiddenMeterType").val("");
+                            return;
+                        }
+                        $("#MeterTypeText").val(meterType);
+                        $("#HiddenMeterType").val(meterType);
+                    },
+                    error: function () {
+                        $("#MeterTypeText").val("");
+                        $("#HiddenMeterType").val("");
+                    }
+                });
+            });
+
+            // Conventional dropdown
+            $("#MeterType").change(function () {
+                if (globalMode == 1) {
+                    $("#HiddenMeterType").val($(this).val());
+                }
+            });
+
+            function LoadMeterMode(projectId) {
+                $.ajax({
+                    url: '@Url.Action("GetMeterModel", "Meter")',
+                    type: 'GET',
+                    data: { projectId: projectId },
+                    success: function (response) {
+                        if (!response.success || response.meterMode == 2) {
+                            $("#MeterType_ddl").hide();
+                            $("#MeterType").removeAttr("required");
+                            return;
+                        }
+
+                        $("#MeterType_ddl").show();
+                        $("#MeterType").attr("required", "required").empty()
+                            .append('<option value="" selected disabled>Select Meter Model</option>');
+
+                        $.each(response.models, function (i, item) {
+                            $("#MeterType").append(`<option value="${item.text}">${item.text}</option>`);
+                        });
+                    },
+                    error: function () {
+                        $("#MeterType_ddl").hide();
+                        $("#MeterType").removeAttr("required");
+                        alert("Failed to load meter models.");
+                    }
+                });
+            }
+        });
+
+    </script>
+}

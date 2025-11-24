@@ -1,0 +1,170 @@
+﻿@model HESCO.Models.Complaint.FaultyMetersEditViewModel
+
+@{
+    ViewData["Title"] = "Edit FaultMeter";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    string fmsn = ViewData["FMSN"]?.ToString() ?? "";
+    string fat = ViewData["FAT"]?.ToString() ?? "";
+    string fsdn = ViewData["FSDN"]?.ToString() ?? "";
+    string issueDescription = ViewData["IssueDescription"]?.ToString() ?? "";
+    string Status = ViewData["Status"]?.ToString() ?? "";
+    string fReportedBy = ViewData["FRB"]?.ToString() ?? "";
+    string fdataReset = ViewData["DR"]?.ToString() ?? "";
+    int page = int.Parse(ViewData["page"]?.ToString() ?? "1");
+    int pageSize = int.Parse(ViewData["pageSize"]?.ToString() ?? "1");
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-sm-10">
+            <div class="card" style="background-color:blanchedalmond">
+                <div class="card-body p-3">
+                    <h1 style="text-align:center">Edit Faulty Meter</h1>
+                    <form asp-action="EditFaultyMetersByQC" method="post" id="editFaultyMeterForm" enctype="multipart/form-data">
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+
+                        <div class="form-group">
+                            <label asp-for="MSN" class="control-label"></label>
+                            <input asp-for="MSN" class="form-control" readonly />
+                            <span asp-validation-for="MSN" class="text-danger"></span>
+                        </div>
+                     @*    <div class="form-group">
+                            <label asp-for="SubDiv" class="control-label"></label>
+                            <input asp-for="SubDiv" class="form-control" readonly />
+                            <span asp-validation-for="SubDiv" class="text-danger"></span>
+                        </div> *@
+                        <div class="form-group">
+                            <label asp-for="Fault_Description" class="control-label"></label>
+                            <input asp-for="Fault_Description" class="form-control" readonly />
+                            <span asp-validation-for="Fault_Description" class="text-danger"></span>
+                        </div>
+                        <div class="form-group" id="remarksWrapper">
+                            <label asp-for="Remarks" class="control-label"></label>
+                            <div id="remarksList">
+                                <input asp-for="Remarks" class="form-control" name="remarks[]" required />
+                            </div>
+                            <button type="button" id="confirm-remarks-btn" class="btn btn-success">+</button>
+                            <button type="button" id="cancel-remarks-btn" class="btn btn-danger">✘</button>
+                            <span asp-validation-for="Remarks" class="text-danger"></span>
+                        </div>
+                      @*   <div class="form-group">
+                            <label asp-for="Remarks" class="control-label"></label>
+                            <input asp-for="Remarks" class="form-control" />
+                            <span asp-validation-for="Remarks" class="text-danger"></span>
+                        </div> *@
+                      <div class="form-group">
+                        <label for="Verified">Verified</label>
+                        <select id="Verified" name="Verified" class="form-control" required>
+                            <option value="">Select option</option>
+                            <option value="1">Yes</option>
+                            <option value="0">No</option>
+                        </select>
+                        <span asp-validation-for="Verified" class="text-danger"></span>
+                    </div>
+
+                       @*  <div class="form-group">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="Verified" name="Verified" value="1" @(Model.Verified == 1 ? "checked" : "") />
+                                <label class="form-check-label" for="Verified">Verified</label>
+                            </div>
+                            <span asp-validation-for="Verified" class="text-danger"></span>
+                        </div> *@
+                        <div class="form-group">
+                            <label for="FaultyImages">Attach Fault_Report / Photo</label>
+                            <input type="file" name="FaultyImages" id="FaultyImages" multiple class="form-control"
+                                   accept=".png,.jpeg,.jpg,.pdf,.doc,.docx,.xls,.xlsx,.xml" />
+                            <small class="form-text text-muted">You can upload up to 10 files. Allowed formats: PNG, JPEG, JPG, PDF, DOC, DOCX, XLS, XLSX,XML.</small>
+                        </div>
+
+                        <div class="form-group">
+                            <input type="submit" id="complaintformbtn" value="Save" class="btn btn-primary" />
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div>
+        <a href="@Url.Action("ViewFaultyMeters", "Complaint", new {
+                        fmsn = ViewData["FMSN"],
+                        fat = ViewData["FAT"],
+                        fsdn = ViewData["FSDN"],
+                        issueDescription = ViewData["IssueDescription"],
+                        status = ViewData["Status"],
+                        executedDate = ViewData["ExecutedDate"],
+                        fReportedBy = ViewData["FRB"],
+                        fdataReset = ViewData["DR"],
+                        page = ViewData["page"],
+                        pageSize = ViewData["pageSize"]
+                    })" class="btn btn-success">Back to List</a>
+    </div>
+</div>
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Function to toggle Remarks field
+            function toggleRemarksField() {
+                var descriptionField = $("#remarksList input[name='remarks[]']");
+                if (descriptionField.val().trim() === "") {
+                    // Field is empty, make it editable
+                    descriptionField.prop("readonly", false);
+                } else {
+                    // Field has value, make it readonly
+                    descriptionField.prop("readonly", true);
+                }
+            }
+
+            // Initialize the Remarks field on page load
+            toggleRemarksField();
+            // Add new Remarks field on button click
+            $("#confirm-remarks-btn").click(function () {
+                $("#remarksList").append('<input type="text" name="remarks[]" class="form-control mt-2" />');
+            });
+
+            // Confirm button click handler
+            $("#confirm-remarks-btn").click(function () {
+                var newDescription = $("#remarksList input[name='remarks[]']").last().val().trim();
+                var existingDescription = $("#remarksList input[name='remarks[]']").first().val().trim();
+                if (newDescription !== "") {
+                    var combinedDescription = existingDescription + (existingDescription ? "; " : "") + newDescription;
+                    $("#remarksList input[name='remarks[]']").first().val(combinedDescription);
+                    $("#remarksList input[name='remarks[]']").last().remove(); // Remove the new input field
+                    toggleRemarksField(); // Update field to readonly if necessary
+                }
+            });
+
+            // Cancel button click handler
+            $("#cancel-remarks-btn").click(function () {
+                $("#remarksList input[name='remarks[]']").last().remove(); // Remove the new input field
+                toggleRemarksField(); // Update field to readonly if necessary
+            });
+            $('#FaultyImages').on('change', function () {
+                const maxFiles = 10;
+                const allowedExtensions = ['.png', '.jpeg', '.jpg', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.xml'];
+                const files = this.files;
+                let isValid = true;
+                let errorMsg = '';
+
+                if (files.length > maxFiles) {
+                    errorMsg = 'You can only upload a maximum of 10 files.';
+                    isValid = false;
+                }
+
+                for (let i = 0; i < files.length; i++) {
+                    const fileExtension = '.' + files[i].name.split('.').pop().toLowerCase();
+                    if ($.inArray(fileExtension, allowedExtensions) === -1) {
+                        errorMsg = 'Invalid file type. Allowed formats: PNG, JPEG, JPG, PDF, DOC, DOCX, XLS, XLSX,XML.';
+                        isValid = false;
+                        break;
+                    }
+                }
+
+                if (!isValid) {
+                    alert(errorMsg);
+                    this.value = ''; // Clear the input if validation fails
+                }
+            });
+        });
+    </script>
+}

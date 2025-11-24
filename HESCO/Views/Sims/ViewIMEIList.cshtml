@@ -1,0 +1,248 @@
+﻿@model IEnumerable<HESCO.Models.IMEIDataViewModel>
+
+@{
+    ViewData["Title"] = "View IMEI List";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    /* DataTable Buttons Styling */
+    .dt-buttons .btn {
+        margin: 2px;
+        font-size: 12px !important;
+        padding: 4px 8px !important;
+    }
+
+    .dt-button-collection {
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+        .dt-button-collection .dt-button {
+            color: #333 !important;
+            background: white !important;
+            border: none !important;
+            text-align: left !important;
+            margin: 0 !important;
+            padding: 8px 12px !important;
+        }
+
+            .dt-button-collection .dt-button:hover {
+                background: #f8f9fa !important;
+            }
+    /* Pagination buttons blue */
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        font-size: 10px !important;
+    }
+
+    .select2-dropdown .select2-results__option {
+        font-size: 10px !important;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+        font-size: 10px !important;
+    }
+
+    .table thead th {
+        padding: 0px;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        display: grid !important;
+    }
+
+    .c-filters {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .table-success {
+        background-color: red !important;
+        color: black !important;
+    }
+
+    .pagination-list {
+        display: flex;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .page-item {
+        margin: 0 2px;
+    }
+
+        .page-item a {
+            text-decoration: none;
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            color: #007bff;
+            display: inline-block;
+        }
+
+        .page-item.active a {
+            background-color: #007bff;
+            color: #fff;
+            border-color: #007bff;
+        }
+
+        .page-item.disabled a {
+            color: #ccc;
+            cursor: not-allowed;
+            border-color: #ddd;
+        }
+
+    .highlighted {
+        background-color: #99ccff;
+    }
+
+    .group-header {
+        background-color: #f7f7f7;
+        font-weight: bold;
+        text-align: left;
+        padding-left: 15px;
+    }
+
+    .group-toggle {
+        display: flex;
+        align-items: center;
+    }
+
+        .group-toggle .group-icon {
+            margin-right: 10px;
+            font-size: 14px;
+            color: #007bff;
+        }
+
+    /* SMALL + CLEAN PAGINATION BUTTONS */
+    #imeiTable_paginate .paginate_button a,
+    #imeiTable_paginate .paginate_button {
+        font-size: 11px !important;
+        padding: 3px 6px !important;
+        margin: 1px !important;
+        border-radius: 3px !important;
+        background: #f0f0f0 !important;
+        color: #333 !important;
+        border: 1px solid #ccc !important;
+    }
+
+        #imeiTable_paginate .paginate_button.current {
+            background: #007bff !important;
+            color: white !important;
+            border: 1px solid #007bff !important;
+        }
+
+        #imeiTable_paginate .paginate_button:hover {
+            background: #e0e0e0 !important;
+            color: #000 !important;
+        }
+
+        #imeiTable_paginate .paginate_button.previous a::after {
+            content: " ‹" !important;
+        }
+
+        #imeiTable_paginate .paginate_button.next a::after {
+            content: " ›" !important;
+        }
+
+    @@media (max-width: 768px) {
+        #imeiTable_paginate ul.pagination {
+            flex-wrap: wrap;
+            justify-content: flex-start;
+        }
+
+        #imeiTable_info {
+            text-align: left !important;
+            margin-top: 5px;
+        }
+    }
+
+    #imeiTable_wrapper {
+        overflow-x: auto;
+    }
+
+    .card {
+        overflow-x: auto;
+    }
+</style>
+
+
+<div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
+    <div class="card">
+        <div class="card-body p-3">
+            <h1 style="text-align:center">IMEI Management</h1>
+            <div class="row mb-2">
+                <div class="col-md-12 text-right">
+                    <a href="@Url.Action("CreateNewIMEI", "Sims")" class="btn btn-success">Create New</a>
+                    <a id="btnClearAllFilters" class="btn btn-primary">Clear Filters</a>
+                    <!-- Export Buttons -->
+                    <div class="btn-group">
+                        <button type="button" class="btn btn-info dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="javascript:void(0);" id="exportExcelAll">Excel - All Pages</a></li>
+                            <li><a class="dropdown-item" href="javascript:void(0);" id="exportExcelCurrent">Excel - Current Page</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="javascript:void(0);" id="exportPdfAll">PDF - All Pages</a></li>
+                            <li><a class="dropdown-item" href="javascript:void(0);" id="exportPdfCurrent">PDF - Current Page</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <p style="color: blue; font-weight: bold;" id="recordCount">
+                Loading records...
+            </p>
+
+            <div class="table-responsive">
+                <table id="imeiTable" class="table table-bordered table-striped" style="font-size:11px;">
+                    <thead>
+                        <tr>
+                            <th>IMEI</th>
+                            <th>Project Name</th>
+                            <th>Change Project Name</th>
+                            <th>Created By</th>
+                            <th>Created At</th>
+                            <th>Map DateTime</th> <!-- ADD THIS COLUMN -->
+                            <th>Change Project Date</th>
+                            <th>Actions</th>
+                        </tr>
+                        <tr class="filters">
+                            <th><select id="IMEIFilter" class="form-control form-control-sm"></select></th>
+                            <th><select id="ProjectFilter" class="form-control form-control-sm"></select></th>
+                            <th><select id="ChangeProjectFilter" class="form-control form-control-sm"></select></th>
+                            <th><select id="CreatedByFilter" class="form-control form-control-sm"></select></th>
+                            <th><input type="text" id="CreatedAtFilter" class="form-control form-control-sm"></th>
+                            <th><input type="text" id="MapDateTimeFilter" class="form-control form-control-sm"></th> <!-- ADD THIS FILTER -->
+                            <th><input type="text" id="ChangeProjectDateFilter" class="form-control form-control-sm"></th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+@section scripts {
+    <script>
+        // URLs for AJAX calls
+        var imeiUrls = {
+            getIMEIData: '@Url.Action("GetIMEIData", "Sims")',
+            getIMEIDetails: '@Url.Action("GetIMEIDetails", "Sims")',
+            deleteIMEI: '@Url.Action("DeleteIMEI", "Sims")',
+            exportExcel: '@Url.Action("ExportIMEIToExcel", "Sims")',
+            exportPDF: '@Url.Action("ExportIMEIToPDF", "Sims")',
+            loadIMEISearchDDL: '@Url.Action("LoadIMEISearchDDL", "Sims")'
+        };
+    </script>
+    <script src="~/js/datatables.min.js"></script>
+    
+    <script src="~/js/bootstrap-datepicker.min.js"></script>
+    <script src="~/js/datatables.rowgroup.min.js"></script>
+    <script src="~/js/bootstrap5.min.js"></script>
+    <script src="~/js/sims/viewimeilist.js"></script>
+}

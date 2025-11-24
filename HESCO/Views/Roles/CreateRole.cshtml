@@ -1,0 +1,176 @@
+﻿@model IEnumerable<HESCO.Models.ActionInfo>
+
+@{
+    ViewData["Title"] = "Create Role";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-12">
+            <div class="card" style="background-color:blanchedalmond">
+                <div class="card-body p-3">
+                    <h1 style="text-align:center">Create Role</h1>
+                    <form id="createRoleForm" asp-action="CreateRole" method="post">
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                        <div class="form-group">
+                            <label for="Name" class="control-label"></label>
+                            <input id="Name" name="Name" class="form-control" required />
+                        </div>
+
+                        <div class="form-group">
+                            <label class="control-label">Select Permissions</label>
+                            <div id="menuContainer">
+                                @if (Model != null)
+                                {
+                                    foreach (var permission in Model)
+                                    {
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <div class="menu-group">
+                                                    <!-- Toggle for showing/hiding children -->
+                                                    <span class="toggle" data-target="#children_@permission.Id">+</span>
+                                                    <input type="checkbox" class="parent-menu" id="menu_@permission.Id" value="@permission.Id" />
+                                                    <label for="menu_@permission.Id">@permission.Controller</label>
+
+                                                    <!-- Display children menus, initially hidden -->
+                                                    <div class="children" id="children_@permission.Id">
+                                                        <ul>
+                                                            @foreach (var child in permission.SubActions)
+                                                            {
+                                                                if (child.SubActions.Count == 0)
+                                                                {
+                                                                    <li>
+                                                                        <div class="child-item">
+                                                                            <input type="checkbox" class="child-menu" data-parent-id="@permission.Id" id="menu_@child.Id" name="selectedMenuIds" value="@child.Id" />
+                                                                            <label for="menu_@child.Id">@child.Action</label>
+                                                                        </div>
+                                                                    </li>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <li>
+                                                                        <div class="child-item">
+                                                                            <span class="toggle" data-target="#children1_@child.Id">+</span>
+                                                                            <input type="checkbox" class="parent1-menu child-menu" data-parent-id="@permission.Id" id="menu_@child.Id" value="@child.Id" name="selectedMenuIds" />
+                                                                            <label for="menu_@child.Id">@child.Action</label>
+
+                                                                            <div class="children1" id="children1_@child.Id">
+                                                                                <ul>
+                                                                                    @foreach (var subChild in child.SubActions)
+                                                                                    {
+                                                                                        <li>
+                                                                                            <input type="checkbox" class="child1-menu" data-parent-id="@child.Id" id="menu_@subChild.Id" value="@subChild.Id" name="selectedMenuIds" />
+                                                                                            <label for="menu_@subChild.Id">@subChild.Action</label>
+                                                                                        </li>
+                                                                                    }
+                                                                                </ul>
+                                                                            </div>
+                                                                        </div>
+                                                                    </li>
+                                                                }
+
+                                                            }
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+                        </div>
+
+
+                        <div class="form-group">
+                            <input type="submit" value="Create" class="btn btn-primary" />
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div>
+        <a href="@Url.Action("ViewRoles", "Roles")" class="btn btn-success">Back to List</a>
+    </div>
+</div>
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            // Hide child containers initially
+            $(".children, .children1").hide();
+
+            // Expand/Collapse Functionality
+            $(".toggle").click(function () {
+                let target = $(this).data("target");
+                $(target).toggle();
+                $(this).text($(target).is(":visible") ? "-" : "+");
+            });
+
+            // Function to update parent state recursively (Fixes grandparent issue)
+            function updateParentState(child) {
+                let parentId = child.data("parent-id");
+                if (!parentId) return;
+
+                let parentCheckbox = $(`#menu_${parentId}`);
+
+                // Ensure parent is checked only if at least one child is checked
+                let siblingsChecked = $(`[data-parent-id='${parentId}']:checked`).length > 0;
+                parentCheckbox.prop("checked", siblingsChecked);
+
+                // If parent is now checked, ensure its grandparent is also checked
+                if (siblingsChecked) {
+                    updateParentState(parentCheckbox);
+                }
+            }
+
+            // Function to update child checkboxes recursively
+            function updateChildState(parent, isChecked) {
+                let parentId = parent.attr("id").split("_")[1];
+
+                // Find direct children and update their state
+                $(`[data-parent-id='${parentId}']`).prop("checked", isChecked).each(function () {
+                    updateChildState($(this), isChecked); // Recursively update deeper levels
+                });
+            }
+
+            // When a parent checkbox is toggled, update all child checkboxes
+            $(".parent-menu, .parent1-menu").change(function () {
+                let isChecked = $(this).is(":checked");
+                updateChildState($(this), isChecked);
+            });
+
+            // When a child-menu checkbox is toggled, update its parent
+            $(".child-menu, .child1-menu").change(function () {
+                updateParentState($(this));
+            });
+        });
+    </script>
+}
+
+
+<style>
+    .toggle {
+        font-weight: bold;
+        cursor: pointer;
+        margin-right: 5px;
+    }
+
+    .menu-group {
+        margin-bottom: 10px;
+    }
+
+    .children {
+        display: none;
+        margin-left: 30px;
+    }
+
+    .child-item {
+        margin-bottom: 5px;
+    }
+
+    .row {
+        margin-bottom: 15px;
+    }
+</style>

@@ -1,0 +1,94 @@
+﻿@model HESCO.Models.RoleMenuViewModel
+
+@{
+    ViewData["Title"] = "Confirm Role Update";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    string statusText = Model.Status == 1 ? "Active" : "Inactive";
+}
+
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-body p-4">
+
+                    @* Success Message Container (Initially Hidden) *@
+                    <div id="statusMessageContainer" class="alert alert-success d-none text-center position-relative" role="alert">
+                        <button type="button" class="btn-close position-absolute top-0 end-0 m-2" id="closeMessage"></button>
+                        <span id="statusMessageText"></span>
+                    </div>
+
+                    @* Form Container *@
+                    <div id="formContainer">
+                        <h2 class="text-center text-primary">Confirm Role Update</h2>
+                        <hr />
+
+                        <p class="text-center">
+                            Are you sure you want to update the status of the role <strong>@Model.Name</strong>?
+                        </p>
+
+                        <p class="text-center">
+                            The current status is:
+                            <span id="currentStatus" class="badge @(Model.Status == 1 ? "bg-success" : "bg-danger")">
+                                @statusText
+                            </span>
+                        </p>
+
+                        <div class="text-center mt-4">
+                            <button id="updateRoleStatus" class="btn btn-warning">
+                                <i class="fas fa-edit"></i> Update
+                            </button>
+                            <a href="@Url.Action("ViewRoles", "Roles")" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+
+                        <input type="hidden" id="roleId" value="@Model.Id" />
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $("#updateRoleStatus").click(function () {
+            var roleId = $("#roleId").val();
+
+            $.ajax({
+                url: '@Url.Action("DeleteRole", "Roles")',
+                type: 'POST',
+                data: { id: roleId },
+                success: function (response) {
+                    if (response.success) {
+                        // Hide form and show message
+                        $("#formContainer").hide();
+                        $("#statusMessageText").html(response.message);
+                        $("#statusMessageContainer").removeClass("d-none");
+
+                        // Auto-hide message after 5 seconds and redirect
+                        setTimeout(function () {
+                            window.location.href = '@Url.Action("ViewRoles", "Roles")';
+                        }, 5000);
+                    } else {
+                        $("#statusMessageText").html(response.message);
+                        $("#statusMessageContainer").removeClass("d-none alert-success").addClass("alert-danger");
+                    }
+                },
+                error: function () {
+                    $("#statusMessageText").html("An error occurred while updating the role status.");
+                    $("#statusMessageContainer").removeClass("d-none alert-success").addClass("alert-danger");
+                }
+            });
+        });
+
+        // Close button hides the message
+        $("#closeMessage").click(function () {
+            $("#statusMessageContainer").addClass("d-none");
+        });
+    });
+</script>

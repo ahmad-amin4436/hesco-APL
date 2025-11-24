@@ -1,0 +1,155 @@
+﻿@model HESCO.Models.Projects.ProjectData
+@{
+    ViewData["Title"] = "Create Project";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-sm-10">
+            <div class="card" style="background-color:blanchedalmond">
+                <div class="card-body p-3">
+                    <h1 style="text-align:center">Create Project</h1>
+
+                    <form id="projectForm" asp-action="CreateProject" enctype="multipart/form-data">
+                        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                        <div class="form-group">
+                            <label asp-for="ProjectName" class="control-label"></label>
+                            <input asp-for="ProjectName" class="form-control" required />
+                            <span asp-validation-for="ProjectName" class="text-danger"></span>
+                        </div>
+                        <div class="form-group">
+                            <label class="control-label">Meter Mode</label>
+
+                            <select asp-for="MeterModeId" id="MeterModeId" class="form-control">
+                                <option value="">-- Select Meter Mode --</option>
+                                @foreach (var item in ViewBag.MeterModes)
+                                {
+                                    <option value="@item.Value">@item.Text</option>
+                                }
+                            </select>
+                        </div>
+
+                        <!-- Checkboxes Section -->
+                        <div id="checkboxSection" class="form-group mt-2" style="display:none;">
+                            <label id="checkboxLabel" class="font-weight-bold">Select at least one:</label>
+
+                            <div class="form-check">
+                                <input type="checkbox" id="IsIMEI" asp-for="IsIMEI" class="form-check-input" />
+                                <label class="form-check-label" for="IsIMEI">Is IMEI</label>
+                            </div>
+
+                            <div class="form-check">
+                                <input type="checkbox" id="IsIMSI" asp-for="IsIMSI"  class="form-check-input" />
+                                <label class="form-check-label" for="IsIMSI">Is IMSI</label>
+                            </div>
+
+                            <div class="form-check">
+                                <input type="checkbox" id="IsBarcode" asp-for="IsBarcode" class="form-check-input" />
+                                <label class="form-check-label" for="IsBarcode">Is Barcode</label>
+                            </div>
+
+                            <span id="checkboxError" class="text-danger"></span>
+                        </div>
+
+
+                        <div class="form-group">
+                            <input type="submit" value="Create" class="btn btn-primary" />
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div>
+        <a href="@Url.Action("ViewProjectList", "Project")" class="btn btn-success">Back to List</a>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+<script>
+    // document.getElementById("projectForm").addEventListener("submit", function (e) {
+    //     let checkboxes = document.querySelectorAll('input[type="checkbox"]');
+    //     let checked = Array.from(checkboxes).some(checkbox => checkbox.checked);
+
+    //     if (!checked) {
+    //         document.getElementById("checkboxError").innerText = "Please select at least one option.";
+    //         e.preventDefault(); // Prevent form submission
+    //     } else {
+    //         document.getElementById("checkboxError").innerText = "";
+    //     }
+    // });
+    $(document).ready(function () {
+        const $form = $("#projectForm");
+        const $meterMode = $("#MeterModeId");
+        const $checkboxSection = $("#checkboxSection");
+        const $checkboxLabel = $("#checkboxLabel");
+        const $checkboxError = $("#checkboxError");
+
+        const $imei = $("#IsIMEI");
+        const $imsi = $("#IsIMSI");
+        const $barcode = $("#IsBarcode");
+
+        // Function to hide and reset all checkboxes (do NOT disable)
+        function resetCheckboxes() {
+            [$imei, $imsi, $barcode].forEach(cb => {
+                cb.prop("checked", false)
+                  .closest(".form-check").hide();
+            });
+            $checkboxLabel.hide();
+            $checkboxError.text("");
+        }
+
+        // Handle Meter Mode change
+        function handleMeterModeChange() {
+            const mode = $meterMode.val();
+            resetCheckboxes();
+
+            if (!mode) {
+                $checkboxSection.hide();
+                return;
+            }
+
+            $checkboxSection.show();
+
+            if (mode === "1") {
+                // Conventional → only Barcode visible, optional
+                $barcode.closest(".form-check").show();
+            }
+            else if (mode === "2") {
+                // AMI → show all checkboxes, label visible
+                $checkboxLabel.show();
+                [$imei, $imsi, $barcode].forEach(cb => cb.closest(".form-check").show());
+            }
+        }
+
+        // Attach change event
+        $meterMode.on("change", handleMeterModeChange);
+
+        // Initialize on page load
+        handleMeterModeChange();
+
+        // Form submission validation
+        $form.on("submit", function () {
+            const mode = $meterMode.val();
+            $checkboxError.text("");
+
+            if (!mode) {
+                alert("Please select a Meter Mode!");
+                return false;
+            }
+
+            if (mode === "2") {
+                // AMI → require at least one checkbox
+                if (!$imei.is(":checked") && !$imsi.is(":checked") && !$barcode.is(":checked")) {
+                    $checkboxError.text("Check at least one of them!").css("color", "red");
+                    return false;
+                }
+            }
+
+            // Conventional → optional, form will submit even if Barcode unchecked
+            return true;
+        });
+    });
+
+</script>

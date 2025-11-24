@@ -1,0 +1,28 @@
+﻿@{
+    ViewData["Title"] = "Access Denied";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-sm-10">
+            <div class="card" style="background-color:blanchedalmond">
+                <div class="card-body p-3">
+                    <h1 style="text-align:center" class="text-danger">
+                        You are not authorized to access this page
+                    </h1>
+                    <p style="text-align:center">You will be redirected shortly.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Replace with your actual redirect URL
+    var redirectUrl = '@ViewBag.RedirectUrl';
+    // Redirect after 5 seconds (5000 milliseconds)
+    setTimeout(function() {
+        window.location.href = redirectUrl;
+    }, 3000);
+</script>

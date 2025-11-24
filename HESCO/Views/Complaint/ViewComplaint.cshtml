@@ -1,0 +1,1238 @@
+﻿@* @model IEnumerable<HESCO.Models.Complaint.ComplaintViewModel>
+
+@{
+    ViewData["Title"] = "ViewComplaints";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    string fopenDescription = ViewData["openDescription"]?.ToString() ?? "";
+    string fmsn = ViewData["FMSN"]?.ToString() ?? "";
+    string fat = ViewData["FAT"]?.ToString() ?? "";
+    string fcustomerId = ViewData["CustomerId"]?.ToString() ?? "";
+    string fissueDescription = ViewData["IssueDescription"]?.ToString() ?? "";
+    string fStatus = ViewData["Status"]?.ToString() ?? "";
+    string fisFaulty = ViewData["IsFaulty"]?.ToString() ?? "";
+    int fpage = int.Parse(ViewData["page"]?.ToString() ?? "1");
+    int fpageSize = int.Parse(ViewData["pageSize"]?.ToString() ?? "1");
+    int totalRecords = int.Parse(ViewData["totalRecords"]?.ToString() ?? "0");
+    var totalPages = int.Parse(ViewData["totalPages"]?.ToString() ?? "0");
+    string fcreateddate = ViewBag.CreatedDate?.ToString() ?? "";
+    string fcloseDate = ViewBag.CloseDate?.ToString() ?? "";
+    string fexecuteddateRange = ViewBag.ExecutedDateRange?.ToString() ?? "";
+    /* var totalPages = (int)Math.Ceiling((decimal)totalRecords / pageSize); */
+
+    var userId = ViewBag.SignedInUserId;
+    var allowedUserIds = ViewBag.AllowedUserIds as string[] ?? new string[0]; // Default to an empty array if null
+
+    // Convert the array to a JSON string
+    var allowedUserIdsJson = "[" + string.Join(",", allowedUserIds.Select(id => $"\"{id}\"")) + "]";
+    var issueDescriptionArray = !string.IsNullOrEmpty(fissueDescription)
+           ? fissueDescription.Split(' ').Select(d => d.Trim()).ToArray()
+           : new string[] { };
+
+    // Convert the array to JSON format
+    var issueDescriptionJson = Newtonsoft.Json.JsonConvert.SerializeObject(issueDescriptionArray);
+   
+}
+
+<style>
+    /* Target the select2 dropdown options */
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        font-size: 10px !important;
+    }
+
+    .select2-dropdown .select2-results__option {
+        font-size: 10px !important;
+    }
+
+    /* For multiple selection dropdowns */
+    .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+        font-size: 10px !important;
+    }
+
+    .table thead th {
+        padding: 0px;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        display: grid !important;
+    }
+
+    .c-filters {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .table-success {
+        background-color: red !important;
+        color: black !important;
+    }
+
+    .pagination-list {
+        display: flex;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .page-item {
+        margin: 0 2px;
+    }
+
+        .page-item a {
+            text-decoration: none;
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            color: #007bff;
+            display: inline-block;
+        }
+
+        .page-item.active a {
+            background-color: #007bff;
+            color: #fff;
+            border-color: #007bff;
+        }
+
+        .page-item.disabled a {
+            color: #ccc;
+            cursor: not-allowed;
+            border-color: #ddd;
+        }
+
+    .highlighted {
+        background-color: #99ccff;
+    }
+
+    .group-header {
+        background-color: #f7f7f7;
+        font-weight: bold;
+        text-align: left;
+        padding-left: 15px;
+    }
+
+    .group-toggle {
+        display: flex;
+        align-items: center;
+    }
+
+        .group-toggle .group-icon {
+            margin-right: 10px;
+            font-size: 14px;
+            color: #007bff;
+        }
+</style>
+<div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
+    <div class="card">
+        <div class="card-body p-3">
+            <h1 style="text-align:center">Complaints</h1>
+            <div class="row mb-2">
+                <div class="col-md-12 text-right">
+                    <a href="@Url.Action("CreateComplaint", "Complaint")" class="btn btn-success">Create New</a>
+                    <a href="@Url.Action("AddLetter", "Complaint")" class="btn btn-dark">Attach Letter</a>
+                    <button id="exportExcelBtn" class="btn btn-danger">Export to Excel</button>
+                    <button id="exportPdfBtn" class="btn btn-dark">Export to PDF</button>
+                    <button id="clearFiltersBtn" class="btn btn-primary">Clear Filters</button>
+                </div>
+            </div>
+            <div class="row mb-2">
+                <input type="hidden" id="hiddenPageSize" value="@ViewBag.PageSize" />
+                <label style="font-size:14px" for="pageSizeSelector">Items per page:</label>
+                <div class="col-md-1 text-right">
+                    <select id="pageSizeSelector" class="form-control">
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="75">75</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+            <p style="color: blue; font-weight: bold;">
+                Showing @((fpage * fpageSize) - fpageSize + 1) to @(Math.Min(totalRecords, fpage * fpageSize)) of @(totalRecords) records
+            </p>
+
+            <table style="font-size:11px" class="table center_text" id="complaintTable">
+                <thead>
+                    <tr>
+                        <th>MSN</th>
+                        <th style="width:60%;">Open Description</th>
+                        <th style="width:60%;">Issue Description</th>
+                        <th>Created Date</th>
+                        <th>Execution Date</th>
+                        <th>Assigned To</th>
+                        <th>Status</th>
+                        <th>Is Faulty</th>
+                        <th>Close Date</th>
+                        <th></th>
+                    </tr>
+                    <tr>
+                        <th>
+                            <select id="MSNFilter" class="filter-dropdown form-control c-filters" style="width:80%" asp-items="ViewBag.SelectMSN"></select>
+                        </th>
+                        <th>
+                            <input type="text" id="openDescriptionFilter" name="OpenDescription" class="form-control c-filters" style="width:80%; font-size:11px;" />
+                        </th>
+                        <th>
+                            <select id="issueDescriptionFilter" class="filter-dropdown form-control c-filters" style="width:80%" asp-items="ViewBag.SelectdescriptionData"></select>
+                        </th>
+                        <th> <input type="date" id="createdDate" name="CreatedDate" class="form-control c-filters" style=" width:80%;font-size:11px;" value="@ViewBag.CreatedDate"></th>
+                        <th>
+                            <input type="text" id="executedDateRange" name="ExecutedDateRange" class="form-control" value="@ViewBag.ExecutedDateRange">
+                        </th>
+                        @*  <th> <input type="date" id="executedDate" name="ExecutedDate" class="form-control c-filters" style=" width:80%;font-size:11px;" value="@ViewBag.ExecutedDate"></th> 
+                        <th>
+                            <select id="assignedToFilter" class="filter-dropdown form-control c-filters" style="width:80%" asp-items="ViewBag.SelectAssignedTo"></select>
+                        </th>
+                        <th>
+                            <select id="statusFilter" class="filter-dropdown  form-control c-filters" style="width:80%" asp-items="ViewBag.SelectStatus"></select>
+                        </th>
+                        <th>
+                            <select id="isFaultyFilter" class="filter-dropdown  form-control c-filters" style="width:80%" asp-items="ViewBag.SelectIsFaulty"></select>
+                        </th>
+                        <th> <input type="date" id="closeDate" name="CloseDate" class="form-control c-filters" style=" width:80%;font-size:11px;" value="@ViewBag.CloseDate"></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var complaint in Model)
+                    {
+                        <tr class="@(complaint.Priority == 1 ? "table-success" : "")">
+                            <td>@complaint.MSN</td>
+                            <td style="word-wrap: break-word; white-space: normal;text-align:left;">@(string.IsNullOrEmpty(complaint.Open_Description) ? "-" : complaint.Open_Description)</td>
+                            <td style="word-wrap: break-word; white-space: normal;text-align:left">@(string.IsNullOrEmpty(complaint.ExecutedDescriptionText) ? "-" : complaint.ExecutedDescriptionText)</td>
+                            <td>@(complaint.OpenedAt == default(DateTime) ? "-" : complaint.OpenedAt.ToString("yyyy-MM-dd"))</td>
+                            <td>@(complaint.DisplayDate == default(DateTime) ? "-" : complaint.DisplayDate.ToString("yyyy-MM-dd"))</td>
+                            <td>@(string.IsNullOrEmpty(complaint.AssignedToUsername) ? "-" : complaint.AssignedToUsername)</td>
+                            <td style="text-align:left">@complaint.StatusDisplay</td>
+                            <td>@complaint.IsFaultyDisplay</td>
+                            <td>@(complaint.ClosedAt == default(DateTime) ? "-" : complaint.ClosedAt.ToString("yyyy-MM-dd"))</td>
+                            <td>
+                                @if (complaint.Status != 3)
+                                {
+                                    <a href="@Url.Action("EditComplaintDetails", new
+                                {
+                                    id = complaint.Id,
+                                    fmsn = ViewData["FMSN"],
+                                    fat = ViewData["FAT"],
+                                    fissueDescription = ViewData["IssueDescription"],
+                                    fstatus = ViewData["Status"],
+                                    fisFaulty = ViewData["IsFaulty"],
+                                    fcustomerId = ViewData["CustomerId"],
+                                    fcreatedDate = ViewData["CreatedDate"],
+                                    fcloseDate = ViewData["CloseDate"],
+                                    fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                    fpage = ViewData["page"],
+                                    fpageSize = ViewData["pageSize"]
+                                })"
+                                       title="Edit"
+                                       onclick="return confirmEdit('@ViewBag.status', '@Url.Action("EditComplaintDetails", new
+                                {
+                                    id = complaint.Id,
+                                    fmsn = ViewData["FMSN"],
+                                    fat = ViewData["FAT"],
+                                    fissueDescription = ViewData["IssueDescription"],
+                                    fstatus = ViewData["Status"],
+                                    fisFaulty = ViewData["IsFaulty"],
+                                    fcreatedDate = ViewData["CreatedDate"],
+                                    fcloseDate = ViewData["CloseDate"],
+                                    fcustomerId = ViewData["CustomerId"],
+                                    fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                    fpage = ViewData["page"],
+                                    fpageSize = ViewData["pageSize"]
+                                })');">
+                                        <i class="fas fa-edit" style="color:green;"></i>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span title="Edit" style="color:grey; cursor:not-allowed;">
+                                        <i class="fas fa-edit"></i>
+                                    </span>
+                                }
+
+
+                                @Html.Raw("| <a href=\"" + Url.Action("ViewComplaintDetail", new
+                                    {
+                                        id = complaint.Id,
+                                        fmsn = ViewData["FMSN"],
+                                        fat = ViewData["FAT"],
+                                        fcustomerId = ViewData["CustomerId"],
+                                        fissueDescription = ViewData["IssueDescription"],
+                                        fstatus = ViewData["Status"],
+                                        fisFaulty = ViewData["IsFaulty"],
+                                        fcreatedDate = ViewData["CreatedDate"],
+                                        fcloseDate = ViewData["CloseDate"],
+                                        fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                        fpage = ViewData["page"],
+                                        fpageSize = ViewData["pageSize"]
+                                    }) + "\" title=\"View\"><i class=\"fas fa-eye\" style=\"color:green;\"></i></a> | ")                              
+                                <a href="@Url.Action("DeleteComplaint", new { id = complaint.Id })"
+                                   title="Delete"
+                                   onclick="return confirmDelete('@ViewBag.SignedInUserId', '@Url.Action("DeleteComplaint", new { id = complaint.Id })');">
+                                    <i class="fas fa-trash-alt" style="color:red;"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<div class="pagination">
+    <ul class="pagination-list">
+        @if (ViewData["totalPages"] != null)
+        {
+            var currentPage = (int)ViewData["page"];
+            var totalPage = (int)ViewData["totalPages"];
+
+            // Calculate the range of pages to show
+            var startPage = Math.Max(1, currentPage - 5);
+            var endPage = Math.Min(totalPage, currentPage + 4);
+
+            if (endPage - startPage < 9) // Ensure we have 10 pages shown
+            {
+                if (startPage == 1)
+                {
+                    endPage = Math.Min(totalPage, startPage + 9);
+                }
+                else if (endPage == totalPage)
+                {
+                    startPage = Math.Max(1, endPage - 9);
+                }
+            }
+
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a href="@Url.Action("ViewComplaint", new { fpage = 1, 
+                                        fmsn = ViewData["FMSN"],
+                                        fat = ViewData["FAT"],
+                                        fissueDescription = ViewData["IssueDescription"],
+                                        fstatus = ViewData["Status"],
+                                        fisFaulty = ViewData["IsFaulty"],
+                                        fcreatedDate = ViewData["CreatedDate"],
+                                        fcloseDate = ViewData["CloseDate"],
+                                          fcustomerId = ViewData["CustomerId"],
+                                        fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                        fpageSize = ViewData["pageSize"] })">&laquo;&laquo;</a>
+            </li>
+
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a href="@Url.Action("ViewComplaint", new { fpage = Math.Max(1, currentPage - 1),
+                                        fmsn = ViewData["FMSN"],
+                                        fat = ViewData["FAT"],
+                                        fissueDescription = ViewData["IssueDescription"],
+                                        fstatus = ViewData["Status"],
+                                        fisFaulty = ViewData["IsFaulty"],
+                                        fcreatedDate = ViewData["CreatedDate"],
+                                        fcloseDate = ViewData["CloseDate"],
+                                        fcustomerId = ViewData["CustomerId"],
+                                        fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                        fpageSize = ViewData["pageSize"] })">&laquo;</a>
+            </li>
+
+            @for (int i = startPage; i <= endPage; i++)
+            {
+                <li class="page-item @(i == currentPage ? "active" : "")">
+                    <a href="@Url.Action("ViewComplaint", new { fpage = i,
+                                        fmsn = ViewData["FMSN"],
+                                        fat = ViewData["FAT"],
+                                        fissueDescription = ViewData["IssueDescription"],
+                                        fstatus = ViewData["Status"],
+                                        fcustomerId = ViewData["CustomerId"],
+                                        fisFaulty = ViewData["IsFaulty"],
+                                        fcreatedDate = ViewData["CreatedDate"],
+                                        fcloseDate = ViewData["CloseDate"],
+                                        fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                        fpageSize = ViewData["pageSize"] })">@i</a>
+                </li>
+            }
+
+            <li class="page-item @(currentPage == totalPage ? "disabled" : "")">
+                <a href="@Url.Action("ViewComplaint", new { fpage = Math.Min(totalPage, currentPage + 1), 
+                                        fmsn = ViewData["FMSN"],
+                                        fat = ViewData["FAT"],
+                                        fissueDescription = ViewData["IssueDescription"],
+                                        fstatus = ViewData["Status"],
+                                        fisFaulty = ViewData["IsFaulty"],
+                                        fcreatedDate = ViewData["CreatedDate"],
+                                        fcloseDate = ViewData["CloseDate"],
+                                        fcustomerId = ViewData["CustomerId"],
+                                        fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                        fpageSize = ViewData["pageSize"] })">&raquo;</a>
+            </li>
+
+            <li class="page-item @(currentPage == totalPage ? "disabled" : "")">
+                <a href="@Url.Action("ViewComplaint", new { fpage = totalPage, 
+                                        fmsn = ViewData["FMSN"],
+                                        fat = ViewData["FAT"],
+                                        fissueDescription = ViewData["IssueDescription"],
+                                        fstatus = ViewData["Status"],
+                                        fisFaulty = ViewData["IsFaulty"],
+                                        fcreatedDate = ViewData["CreatedDate"],
+                                        fcustomerId = ViewData["CustomerId"],
+                                        fcloseDate = ViewData["CloseDate"],
+                                        fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                        fpageSize = ViewData["pageSize"] })">&laquo;&laquo;</a>
+            </li>
+        }
+    </ul>
+</div>
+
+@section scripts
+{
+    <script>
+
+        function confirmDelete(userId, url) {
+            // Convert the JSON string to a JavaScript array
+            var allowedUserIds = JSON.parse('@Html.Raw(allowedUserIdsJson)');
+
+            if (allowedUserIds.includes(userId)) {
+                return confirm('Are you sure you want to delete this complaint?');
+            } else {
+                alert('You are not allowed to delete this complaint.');
+                return false;
+            }
+        }
+        function reloadComplaint(fpage) {
+            var fmsn = $('#MSNFilter').val();
+            var fopenDescription = $('#openDescriptionFilter').val();
+            var fat = $('#assignedToFilter').val();
+            var fcustomerId = $('#CustomerIdFilter').val();
+            var fissueDescription = $('#issueDescriptionFilter').val();
+            var fstatus = $('#statusFilter').val();
+            var fisFaulty = $('#isFaultyFilter').val();
+            var fcreateddate = $('#createdDate').val();
+            var fcloseDate = $('#closeDate').val();
+            var fexecuteddateRange = $('#executedDateRange').val();
+            var fpageSize = $('#pageSizeSelector').val();
+            window.location.href = '@Url.Action("ViewComplaint")' + '?fpage=' + fpage + '&fpageSize=' + fpageSize  + '&fcustomerId=' + fcustomerId + '&fmsn=' + fmsn + '&fat=' + fat + '&fissueDescription=' + fissueDescription + '&fopenDescription=' + fopenDescription + '&fstatus=' + fstatus + '&fisFaulty=' + fisFaulty + '&fcreateddate=' + fcreateddate + '&fexecuteddateRange=' + fexecuteddateRange + '&fcloseDate=' + fcloseDate;
+        }
+        function exportToPdf(fpage) {
+
+            var fmsn = $('#MSNFilter').val();
+            var fat = $('#assignedToFilter').val();
+            var fcustomerId = $('#CustomerIdFilter').val();
+            var fissueDescription = $('#issueDescriptionFilter').val();
+            var fstatus = $('#statusFilter').val();
+            var fisFaulty = $('#isFaultyFilter').val();
+            var fcreateddate = $('#createdDate').val();
+            var fcloseDate = $('#closeDate').val();
+            var fexecuteddateRange = $('#executedDateRange').val();
+            var fpageSize = $('#pageSizeSelector').val();
+            window.location.href = '@Url.Action("ExportToPDF")' + '?fpage=' + fpage + '&fpageSize=' + fpageSize + '&fcustomerId=' + fcustomerId  + '&fmsn=' + fmsn + '&fat=' + fat  + '&fissueDescription=' + fissueDescription + '&fstatus=' + fstatus + '&fisFaulty=' + fisFaulty + '&fcreateddate=' + fcreateddate + '&ffexecuteddateRange=' + fexecuteddateRange + '&fcloseDate=' + fcloseDate;
+        }
+        function exportToExcel(fpage) {
+            var fmsn = $('#MSNFilter').val();
+            var fat = $('#assignedToFilter').val();
+            var fcustomerId = $('#CustomerIdFilter').val();
+            var fissueDescription = $('#issueDescriptionFilter').val();
+            var fstatus = $('#statusFilter').val();
+            var fisFaulty = $('#isFaultyFilter').val();
+            var fcreateddate = $('#createdDate').val();
+            var fcloseDate = $('#closeDate').val();
+            var fexecuteddateRange = $('#executedDateRange').val();
+            var fpageSize = $('#pageSizeSelector').val();
+            window.location.href = '@Url.Action("ExportToExcel")' + '?fpage=' + fpage + '&fpageSize=' + fpageSize + '&fcustomerId=' + fcustomerId + '&fmsn=' + fmsn + '&fat=' + fat  + '&fissueDescription=' + fissueDescription + '&fstatus=' + fstatus + '&fisFaulty=' + fisFaulty + '&fcreateddate=' + fcreateddate + '&fexecuteddateRange=' + fexecuteddateRange + '&fcloseDate=' + fcloseDate;
+        }
+        $(document).ready(function () {
+            // Handle the click event on the group header
+            $('.group-toggle').on('click', function () {
+                var $this = $(this);
+                var referenceNo = $this.data('reference');
+                var $groupBody = $('.group-body[data-reference="' + referenceNo + '"]');
+
+                // Toggle the display of the group body
+                if ($groupBody.is(':visible')) {
+                    $groupBody.hide();
+                    $this.find('.group-icon').text('+');
+                } else {
+                    $groupBody.show();
+                    $this.find('.group-icon').text('-');
+                }
+            });
+            $('#exportPdfBtn').on('click', function () {
+                exportToPdf(@(fpage));
+            });
+            $('#exportExcelBtn').on('click', function () {
+                exportToExcel(@(fpage));
+            });
+            var pageSize = $('#hiddenPageSize').val(); // Get the selected page size from the hidden field
+
+            if (pageSize) {
+                $('#pageSizeSelector').val(pageSize); // Set the selected value
+            }
+
+            $('#pageSizeSelector').on('change', function () {
+                var selectedPageSize = $(this).val();
+                reloadComplaint(1, selectedPageSize); // Reload with the selected page size
+            });
+            $('.filter-dropdown').select2({
+                multiple: true,
+                dropdownAutoWidth: true
+            });
+            $('.c-filters').on('change', function () {
+                reloadComplaint(@(fpage));
+            });
+            var issueDescriptions = JSON.parse('@Html.Raw(issueDescriptionJson)');
+
+            // Set the selected values for the select element
+            $('#issueDescriptionFilter').val(issueDescriptions).trigger('change.select2');
+            $('#MSNFilter').val([@(fmsn)]).trigger('change.select2');
+            $('#CustomerIdFilter').val([@(fcustomerId)]).trigger('change.select2');
+            $('#assignedToFilter').val([@(fat)]).trigger('change.select2');
+            $('#statusFilter').val([@(fStatus)]).trigger('change.select2');
+            $('#isFaultyFilter').val([@(fisFaulty)]).trigger('change.select2');
+            // $('#issueDescriptionFilter').val([@(fissueDescription)]).trigger('change.select2');
+
+            $('#clearFiltersBtn').on('click', function () {
+                var pageSize = $('#pageSizeSelector').val();
+                window.location.href = '@Url.Action("ViewComplaint")' + '?pageSize=' + pageSize;
+            });
+
+            $('#executedDateRange').datepicker({
+                startView: 0,
+                minViewMode: 0,
+                maxViewMode: 2,
+                multidate: true,
+                multidateSeparator: "-",
+                autoClose: true,
+                beforeShowDay: highlightRange,
+            }).on("changeDate", function (event) {
+                var dates = event.dates, elem = $('#executedDateRange');
+                if (dates.length == 2) {
+                    reloadComplaint(@(fpage));
+                }
+                if (elem.data("selecteddates") == dates.join(",")) return;
+                if (dates.length > 2) dates = dates.splice(dates.length - 1);
+                dates.sort(function (a, b) { return new Date(a).getTime() - new Date(b).getTime() });
+                elem.data("selecteddates", dates.join(",")).datepicker('setDates', dates);
+
+            }).on("hide", function (event) {
+                var dates = event.dates, elem = $('#executedDateRange');
+                if (dates.length == 1) {
+                    dates.push(dates[0]);
+                    dates.sort(function (a, b) { return new Date(a).getTime() - new Date(b).getTime() });
+                    elem.data("selecteddates", dates.join(",")).datepicker('setDates', dates);
+                    reloadComplaint(@(fpage));
+                }
+            });
+            function highlightRange(date) {
+                var selectedDates = $('#executedDateRange').datepicker('getDates');
+                if (selectedDates.length === 2 && date >= selectedDates[0] && date <= selectedDates[1]) {
+                    return 'highlighted';
+                }
+                return '';
+            }
+        });
+    </script>
+} *@
+
+@model IEnumerable<HESCO.Models.Complaint.ComplaintViewModel>
+
+@{
+    ViewData["Title"] = "ViewComplaints";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    string frefno = ViewData["FRefNo"]?.ToString() ?? "";
+    string fopenDescription = ViewData["openDescription"]?.ToString() ?? "";
+    string fmsn = ViewData["FMSN"]?.ToString() ?? "";
+    string fat = ViewData["FAT"]?.ToString() ?? "";
+    string fsdn = ViewData["FSDN"]?.ToString() ?? "";
+    // string fcustomerId = ViewData["CustomerId"]?.ToString() ?? "";
+    string fissueDescription = ViewData["IssueDescription"]?.ToString() ?? "";
+    string fStatus = ViewData["Status"]?.ToString() ?? "";
+    string fisFaulty = ViewData["IsFaulty"]?.ToString() ?? "";
+    int fpage = int.Parse(ViewData["page"]?.ToString() ?? "1");
+    int fpageSize = int.Parse(ViewData["pageSize"]?.ToString() ?? "1");
+    int totalRecords = int.Parse(ViewData["totalRecords"]?.ToString() ?? "0");
+    var totalPages = int.Parse(ViewData["totalPages"]?.ToString() ?? "0");
+    string fcreateddate = ViewBag.CreatedDate?.ToString() ?? "";
+    string fcloseDate = ViewBag.CloseDate?.ToString() ?? "";
+    string fexecuteddateRange = ViewBag.ExecutedDateRange?.ToString() ?? "";
+    /* var totalPages = (int)Math.Ceiling((decimal)totalRecords / pageSize); */
+
+    var userId = ViewBag.SignedInUserId;
+    var allowedUserIds = ViewBag.AllowedUserIds as string[] ?? new string[0]; // Default to an empty array if null
+
+    // Convert the array to a JSON string
+    var allowedUserIdsJson = "[" + string.Join(",", allowedUserIds.Select(id => $"\"{id}\"")) + "]";
+    var issueDescriptionArray = !string.IsNullOrEmpty(fissueDescription)
+           ? fissueDescription.Split(' ').Select(d => d.Trim()).ToArray()
+           : new string[] { };
+
+    // Convert the array to JSON format
+    var issueDescriptionJson = Newtonsoft.Json.JsonConvert.SerializeObject(issueDescriptionArray);
+    // Group complaints by Reference_No and only include those that appear more than once
+    var groupedComplaints = Model
+        .OrderByDescending(c => c.Priority)
+        .ThenBy(c => c.Id)
+        .GroupBy(c => c.Reference_No)
+        .Where(g => g.Count() > 1); // Only include groups where the count is greater than 1
+    var singleComplaints = Model
+      .OrderByDescending(c => c.Priority)
+      .ThenBy(c => c.Id)
+      .GroupBy(c => c.Reference_No)
+      .Where(g => g.Count() == 1)
+      .SelectMany(g => g); // Flatten the grouped collection back to a list
+}
+@{
+    var controller = "Complaint";
+    var permissions = ViewBag.UserPermissions as Dictionary<string, List<string>>;
+
+    bool canCreate = PermissionHelper.HasPermission(permissions, controller, "CreateComplaint");
+    bool canEdit = PermissionHelper.HasPermission(permissions, controller, "EditComplaintDetails");
+    bool canView = PermissionHelper.HasPermission(permissions, controller, "ViewComplaintDetail");
+}
+<style>
+    /* Target the select2 dropdown options */
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        font-size: 10px !important;
+    }
+
+    .select2-dropdown .select2-results__option {
+        font-size: 10px !important;
+    }
+
+    /* For multiple selection dropdowns */
+    .select2-container--default .select2-selection--multiple .select2-selection__rendered {
+        font-size: 10px !important;
+    }
+
+    .table thead th {
+        padding: 0px;
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        display: grid !important;
+    }
+
+    .c-filters {
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .table-success {
+        background-color: red !important;
+        color: black !important;
+    }
+
+    .pagination-list {
+        display: flex;
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .page-item {
+        margin: 0 2px;
+    }
+
+        .page-item a {
+            text-decoration: none;
+            padding: 5px 10px;
+            border: 1px solid #ddd;
+            color: #007bff;
+            display: inline-block;
+        }
+
+        .page-item.active a {
+            background-color: #007bff;
+            color: #fff;
+            border-color: #007bff;
+        }
+
+        .page-item.disabled a {
+            color: #ccc;
+            cursor: not-allowed;
+            border-color: #ddd;
+        }
+
+    .highlighted {
+        background-color: #99ccff;
+    }
+
+    .group-header {
+        background-color: #f7f7f7;
+        font-weight: bold;
+        text-align: left;
+        padding-left: 15px;
+    }
+
+    .group-toggle {
+        display: flex;
+        align-items: center;
+    }
+
+        .group-toggle .group-icon {
+            margin-right: 10px;
+            font-size: 14px;
+            color: #007bff;
+        }
+</style>
+<div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
+    <div class="card">
+        <div class="card-body p-3">
+            <h1 style="text-align:center">Complaints</h1>
+            <div class="row mb-2">
+                <div class="col-md-12 text-right">
+
+                    <a href="@(canCreate ? Url.Action("CreateComplaint", "Complaint") : "#")"
+                       class="btn btn-success @(canCreate ? "" : "disabled-link")"
+                    @(canCreate ? "" : "aria-disabled=\"true\" tabindex=\"-1\"")>
+                        Create New
+                    </a>
+                    <a href="@Url.Action("AddLetter", "Complaint")" class="btn btn-dark">Attach Letter</a>
+                    <button id="exportExcelBtn" class="btn btn-danger">Export to Excel</button>
+                    <button id="exportPdfBtn" class="btn btn-dark">Export to PDF</button>
+                    <button id="clearFiltersBtn" class="btn btn-primary">Clear Filters</button>
+                </div>
+            </div>
+            <div class="row mb-2">
+                <input type="hidden" id="hiddenPageSize" value="@ViewBag.PageSize" />
+                <label style="font-size:14px" for="pageSizeSelector">Items per page:</label>
+                <div class="col-md-1 text-right">
+                    <select id="pageSizeSelector" class="form-control">
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="75">75</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+            <p style="color: blue; font-weight: bold;">
+                Showing @((fpage * fpageSize) - fpageSize + 1) to @(Math.Min(totalRecords, fpage * fpageSize)) of @(totalRecords) records
+            </p>
+
+            <table style="font-size:11px" class="table center_text" id="complaintTable">
+                <thead>
+                    <tr>
+                        <th>Reference No</th>
+                        <th>MSN</th>
+                        <th>SubDiv</th>
+                        <th style="width:60%;">Open Description</th>
+                        <th style="width:60%;">Issue Description</th>
+                        <th>Created Date</th>
+                        <th>Execution Date</th>
+                        <th>Assigned To</th>
+                        <th>Status</th>
+                        <th>Is Faulty</th>
+                        <th>Close Date</th>
+                        <th></th>
+                    </tr>
+                    <tr>
+                        <th class="text-center">
+                            <select id="RefNoFilter" class="filter-dropdown form-control c-filters" style="width:80%" asp-items="ViewBag.SelectReferenceNo"></select>
+                        </th>
+                        <th>
+                            <select id="MSNFilter" class="filter-dropdown form-control c-filters" style="width:80%" asp-items="ViewBag.SelectMSN"></select>
+                        </th>
+                        <th>
+                            <select id="subDivisionNameFilter" class="filter-dropdown  form-control c-filters" style="width:80%" asp-items="ViewBag.SelectSubDivision"></select>
+                        </th>
+                        <th>
+                            <input type="text" id="openDescriptionFilter" name="OpenDescription" class="form-control c-filters" style="width:80%; font-size:11px;" />
+                        </th>
+                        <th>
+                            <select id="issueDescriptionFilter" class="filter-dropdown form-control c-filters" style="width:80%" asp-items="ViewBag.SelectdescriptionData"></select>
+                        </th>
+                        <th> <input type="date" id="createdDate" name="CreatedDate" class="form-control c-filters" style=" width:80%;font-size:11px;" value="@ViewBag.CreatedDate"></th>
+                        <th>
+                            <input type="text" id="executedDateRange" name="ExecutedDateRange" class="form-control" value="@ViewBag.ExecutedDateRange">
+                        </th>
+                        @*  <th> <input type="date" id="executedDate" name="ExecutedDate" class="form-control c-filters" style=" width:80%;font-size:11px;" value="@ViewBag.ExecutedDate"></th> *@
+                        <th>
+                            <select id="assignedToFilter" class="filter-dropdown form-control c-filters" style="width:80%" asp-items="ViewBag.SelectAssignedTo"></select>
+                        </th>
+                        <th>
+                            <select id="statusFilter" class="filter-dropdown  form-control c-filters" style="width:80%" asp-items="ViewBag.SelectStatus"></select>
+                        </th>
+                        <th>
+                            <select id="isFaultyFilter" class="filter-dropdown  form-control c-filters" style="width:80%" asp-items="ViewBag.SelectIsFaulty"></select>
+                        </th>
+                        <th> <input type="date" id="closeDate" name="CloseDate" class="form-control c-filters" style=" width:80%;font-size:11px;" value="@ViewBag.CloseDate"></th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var complaint in Model)
+                    {
+                        <tr class="@(complaint.Priority == 1 ? "table-success" : "")">
+                            <td>@(string.IsNullOrEmpty(complaint.Reference_No) ? "-" : complaint.Reference_No)</td>
+                            <td>@complaint.MSN</td>
+                             <td style="text-align:left">@complaint.SubDiv</td>
+                            <td style="word-wrap: break-word; white-space: normal;text-align:left;">@(string.IsNullOrEmpty(complaint.Open_Description) ? "-" : complaint.Open_Description)</td>
+                            <td style="word-wrap: break-word; white-space: normal;text-align:left">@(string.IsNullOrEmpty(complaint.ExecutedDescriptionText) ? "-" : complaint.ExecutedDescriptionText)</td>
+                            <td>@(complaint.OpenedAt == default(DateTime) ? "-" : complaint.OpenedAt.ToString("yyyy-MM-dd"))</td>
+                            <td>@(complaint.DisplayDate == default(DateTime) ? "-" : complaint.DisplayDate.ToString("yyyy-MM-dd"))</td>
+                            <td>@(string.IsNullOrEmpty(complaint.AssignedToUsername) ? "-" : complaint.AssignedToUsername)</td>
+                            <td style="text-align:left">@complaint.StatusDisplay</td>
+                            <td>@complaint.IsFaultyDisplay</td>
+                            <td>@(complaint.ClosedAt == default(DateTime) ? "-" : complaint.ClosedAt.ToString("yyyy-MM-dd"))</td>
+                            <td>
+                                @if (complaint.Status != 3 && canEdit)
+                                {
+                                    <a href="@Url.Action("EditComplaintDetails", new {
+        id = complaint.Id,
+        frefno = ViewData["FRefNo"],
+        fmsn = ViewData["FMSN"],
+        fsdn = ViewData["FSDN"],
+        fat = ViewData["FAT"],
+        fissueDescription = ViewData["IssueDescription"],
+        fstatus = ViewData["Status"],
+        fisFaulty = ViewData["IsFaulty"],
+        fcreatedDate = ViewData["CreatedDate"],
+        fcloseDate = ViewData["CloseDate"],
+        fexecuteddateRange = ViewData["ExecutedDateRange"],
+        fpage = ViewData["page"],
+        fpageSize = ViewData["pageSize"]
+    })"
+                                       title="Edit"
+                                       onclick="return confirmEdit('@ViewBag.status', '@Url.Action("EditComplaintDetails", new {
+        id = complaint.Id,
+        frefno = ViewData["FRefNo"],
+        fmsn = ViewData["FMSN"],
+        fsdn = ViewData["FSDN"],
+        fat = ViewData["FAT"],
+        fissueDescription = ViewData["IssueDescription"],
+        fstatus = ViewData["Status"],
+        fisFaulty = ViewData["IsFaulty"],
+        fcreatedDate = ViewData["CreatedDate"],
+        fcloseDate = ViewData["CloseDate"],
+        fexecuteddateRange = ViewData["ExecutedDateRange"],
+        fpage = ViewData["page"],
+        fpageSize = ViewData["pageSize"]
+    })');">
+                                        <i class="fas fa-edit" style="color:green;"></i>
+                                    </a>
+                                }
+                                else
+                                {
+                                    <span title="Edit" style="color:grey; cursor:not-allowed;">
+                                        <i class="fas fa-edit"></i>
+                                    </span>
+                                }
+
+
+
+                                @Html.Raw("| <a href=\"" + Url.Action("ViewComplaintDetail", new
+                                    {
+                                        id = complaint.Id,
+                                        frefno = ViewData["FRefNo"],
+                                        fmsn = ViewData["FMSN"],
+                                        fsdn = ViewData["FSDN"],
+                                        fat = ViewData["FAT"],
+                                        fissueDescription = ViewData["IssueDescription"],
+                                        fstatus = ViewData["Status"],
+                                        fisFaulty = ViewData["IsFaulty"],
+                                        fcreatedDate = ViewData["CreatedDate"],
+                                        fcloseDate = ViewData["CloseDate"],
+                                        fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                        fpage = ViewData["page"],
+                                        fpageSize = ViewData["pageSize"]
+                                    }) + "\" title=\"View\"><i class=\"fas fa-eye\" style=\"color:green;\"></i></a>  ")
+                               
+                                     @* @Html.Raw("<a href=\"" + Url.Action("ViewLocation", new { msn = complaint.MSN }) + "\" title=\"ViewInstallationLocation\" target=\"_blank\"><i class=\"fas fa-location-arrow\" style=\"color:green;\"></i></a> | ")
+                                @Html.Raw("<a href=\"" + Url.Action("ViewSurveyLocation", new { refNo = complaint.Reference_No }) + "\" title=\"ViewSurveyLocation\" target=\"_blank\"><i class=\"fas fas fa-map-marker-alt\" style=\"color:green;\"></i></a> |")
+                                    @if (complaint.Latitude != null && complaint.Longitude != null)
+                                {
+                                    @Html.Raw("<a href=\"" + Url.Action("ViewUpdatedInstallationLocation", new { refNo = complaint.Reference_No }) + "\" title=\"ViewUpdatedInstallationLocation\" target=\"_blank\"><i class=\"fas fa-map-pin\" style=\"color:green;\"></i></a> |")
+                                }
+                                else
+                                {
+                                    <span title="ViewUpdatedInstallationLocation" style="color:grey; cursor:not-allowed;">
+                                        <i class="fas  fa-map-pin"></i>
+                                    </span>
+                                }
+
+                                Html.Raw("<a href=\"" + Url.Action("ViewSurveyLocation", new { refNo = complaint.Reference_No }) + "\" title=\"ViewSurveyLocation\" target=\"_blank\"><i class=\"fas fa-map-marker-alt\" style=\"color:green;\"></i></a> |")*@
+                              @*  @Html.Raw("<a href=\"" + Url.Action("DeleteComplaint", new { id = complaint.Id }) + "\" title=\"Delete\" onclick=\"return confirm('Are you sure you want to delete this complaint?');\"><i class=\"fas fa-trash-alt\" style=\"color:red;\"></i></a>") 
+                                <a href="@Url.Action("DeleteComplaint", new { id = complaint.Id })"
+                                   title="Delete"
+                                   onclick="return confirmDelete('@ViewBag.SignedInUserId', '@Url.Action("DeleteComplaint", new { id = complaint.Id })');">
+                                    <i class="fas fa-trash-alt" style="color:red;"></i> 
+                                </a>*@
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+               @* <tbody>
+                  @foreach (var group in groupedComplaints)
+                    {
+                        var referenceNo = group.Key;
+
+                   
+                        <tr class="group-header">
+                            <td colspan="11" style="cursor: pointer;" class="group-toggle" data-reference="@referenceNo">
+                                <span class="group-icon">+</span>
+                                Reference No: @referenceNo
+                            </td>
+                        </tr>
+
+                
+                    <tbody class="group-body" data-reference="@referenceNo" style="display: none;">
+                            @foreach (var complaint in group)
+                            {
+                            <tr class="@(complaint.Priority == 1 ? "table-success" : "")">
+                                <td>@complaint.Reference_No</td>
+                                <td>@complaint.MSN</td>
+                                
+                                <td style="text-align:left">@complaint.SubDiv</td>
+                                <td style="word-wrap: break-word; white-space: normal;text-align:left;">@(string.IsNullOrEmpty(complaint.Open_Description) ? "-" : complaint.Open_Description)</td>
+                                <td style="word-wrap: break-word; white-space: normal;text-align:left;">@(string.IsNullOrEmpty(complaint.ExecutedDescriptionText) ? "-" : complaint.ExecutedDescriptionText)</td>
+                                <td>@(complaint.OpenedAt == default(DateTime) ? "-" : complaint.OpenedAt.ToString("yyyy-MM-dd"))</td>
+                                <td>@(complaint.DisplayDate == default(DateTime) ? "-" : complaint.DisplayDate.ToString("yyyy-MM-dd"))</td>
+                                <td style="text-align:left">@(string.IsNullOrEmpty(complaint.AssignedToUsername) ? "-" : complaint.AssignedToUsername)</td>
+                                <td style="text-align:left">@complaint.StatusDisplay</td>
+                                <td>@complaint.IsFaultyDisplay</td>
+                                <td>@(complaint.ClosedAt == default(DateTime) ? "-" : complaint.ClosedAt.ToString("yyyy-MM-dd"))</td>
+                                <td>
+
+                                        @if (complaint.Status != 3)
+                                        {
+                                        <a href="@Url.Action("EditComplaintDetails", new
+                                {
+                                    id = complaint.Id,
+                                    frefno = ViewData["FRefNo"],
+                                    fmsn = ViewData["FMSN"],
+                                    fat = ViewData["FAT"],
+                                    fsdn = ViewData["FSDN"],
+                                    fissueDescription = ViewData["IssueDescription"],
+                                    fstatus = ViewData["Status"],
+                                    fisFaulty = ViewData["IsFaulty"],
+                                    fcreatedDate = ViewData["CreatedDate"],
+                                    fcloseDate = ViewData["CloseDate"],
+                                    fcustomerId = ViewData["CustomerId"],
+                                    fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                    fpage = ViewData["page"],
+                                    fpageSize = ViewData["pageSize"]
+                                })"
+                                           title="Edit"
+                                           onclick="return confirmEdit('@ViewBag.status', '@Url.Action("EditComplaintDetails", new
+                                {
+                                    id = complaint.Id,
+                                    frefno = ViewData["FRefNo"],
+                                    fmsn = ViewData["FMSN"],
+                                    fat = ViewData["FAT"],
+                                    fsdn = ViewData["FSDN"],
+                                    fissueDescription = ViewData["IssueDescription"],
+                                    fstatus = ViewData["Status"],
+                                    fisFaulty = ViewData["IsFaulty"],
+                                    fcreatedDate = ViewData["CreatedDate"],
+                                    fcloseDate = ViewData["CloseDate"],
+                                    fcustomerId = ViewData["CustomerId"],
+                                    fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                    fpage = ViewData["page"],
+                                    fpageSize = ViewData["pageSize"]
+                                })');">
+                                            <i class="fas fa-edit" style="color:green;"></i>
+                                        </a>
+                                        }
+                                        else
+                                        {
+                                        <span title="Edit" style="color:grey; cursor:not-allowed;">
+                                            <i class="fas fa-edit"></i>
+                                        </span>
+                                        }
+
+
+                                        @Html.Raw("| <a href=\"" + Url.Action("ViewComplaintDetail", new
+                                            {
+                                                id = complaint.Id,
+                                                frefno = ViewData["FRefNo"],
+                                                fmsn = ViewData["FMSN"],
+                                                fat = ViewData["FAT"],
+                                                fsdn = ViewData["FSDN"],
+                                                fissueDescription = ViewData["IssueDescription"],
+                                                fstatus = ViewData["Status"],
+                                                fisFaulty = ViewData["IsFaulty"],
+                                                fcreatedDate = ViewData["CreatedDate"],
+                                                fcloseDate = ViewData["CloseDate"],
+                                                fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                                fcustomerId = ViewData["CustomerId"],
+                                                fpage = ViewData["page"],
+                                                fpageSize = ViewData["pageSize"]
+                                            }) + "\" title=\"View\"><i class=\"fas fa-eye\" style=\"color:green;\"></i></a> | ")
+                                        @Html.Raw("<a href=\"" + Url.Action("ViewLocation", new { msn = complaint.MSN }) + "\" title=\"ViewInstallationLocation\" target=\"_blank\"><i class=\"fas fas fa-location-arrow\" style=\"color:green;\"></i></a> | ")
+                                        @Html.Raw("<a href=\"" + Url.Action("ViewSurveyLocation", new { refNo = complaint.Reference_No }) + "\" title=\"ViewSurveyLocation\" target=\"_blank\"><i class=\"fas fas fa-map-marker-alt\" style=\"color:green;\"></i></a> |")
+                                        @if (complaint.Latitude != null && complaint.Longitude != null)
+                                        {
+                                            @Html.Raw("<a href=\"" + Url.Action("ViewUpdatedInstallationLocation", new { refNo = complaint.Reference_No }) + "\" title=\"ViewUpdatedInstallationLocation\" target=\"_blank\"><i class=\"fas fa-map-pin\" style=\"color:green;\"></i></a> |")
+                                        }
+                                        else
+                                        {
+                                        <span title="ViewUpdatedInstallationLocation" style="color:grey; cursor:not-allowed;">
+                                            <i class="fas  fa-map-pin"></i> |
+                                        </span>
+                                        }
+                                        @* @Html.Raw("<a href=\"" + Url.Action("DeleteComplaint", new { id = complaint.Id }) + "\" title=\"Delete\" onclick=\"return confirm('Are you sure you want to delete this complaint?');\"><i class=\"fas fa-trash-alt\" style=\"color:red;\"></i></a>") 
+                                    <a href="@Url.Action("DeleteComplaint", new { id = complaint.Id })"
+                                       title="Delete"
+                                       onclick="return confirmDelete('@ViewBag.SignedInUserId', '@Url.Action("DeleteComplaint", new { id = complaint.Id })');">
+                                        <i class="fas fa-trash-alt" style="color:red;"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            }
+                    </tbody>
+                    }
+                </tbody>  *@
+            </table>
+        </div>
+    </div>
+</div>
+<div class="pagination">
+    <ul class="pagination-list">
+        @if (ViewData["totalPages"] != null)
+        {
+            var currentPage = (int)ViewData["page"];
+            var totalPage = (int)ViewData["totalPages"];
+
+            // Calculate the range of pages to show
+            var startPage = Math.Max(1, currentPage - 5);
+            var endPage = Math.Min(totalPage, currentPage + 4);
+
+            if (endPage - startPage < 9) // Ensure we have 10 pages shown
+            {
+                if (startPage == 1)
+                {
+                    endPage = Math.Min(totalPage, startPage + 9);
+                }
+                else if (endPage == totalPage)
+                {
+                    startPage = Math.Max(1, endPage - 9);
+                }
+            }
+
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a href="@Url.Action("ViewComplaint", new { fpage = 1, 
+                    frefno = ViewData["FRefNo"],
+                                        fmsn = ViewData["FMSN"],
+                                         fsdn = ViewData["FSDN"],
+                                        fat = ViewData["FAT"],
+                                        fissueDescription = ViewData["IssueDescription"],
+                                        fstatus = ViewData["Status"],
+                                        fisFaulty = ViewData["IsFaulty"],
+                                        fcreatedDate = ViewData["CreatedDate"],
+                                        fcloseDate = ViewData["CloseDate"],
+                                        fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                        fpageSize = ViewData["pageSize"] })">&laquo;&laquo;</a>
+            </li>
+
+            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                <a href="@Url.Action("ViewComplaint", new { fpage = Math.Max(1, currentPage - 1),
+frefno = ViewData["FRefNo"],
+                                        fmsn = ViewData["FMSN"],
+ fsdn = ViewData["FSDN"],
+                                        fat = ViewData["FAT"],
+                                        fissueDescription = ViewData["IssueDescription"],
+                                        fstatus = ViewData["Status"],
+                                        fisFaulty = ViewData["IsFaulty"],
+                                        fcreatedDate = ViewData["CreatedDate"],
+                                        fcloseDate = ViewData["CloseDate"],
+                                        fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                        fpageSize = ViewData["pageSize"] })">&laquo;</a>
+            </li>
+
+            @for (int i = startPage; i <= endPage; i++)
+            {
+                <li class="page-item @(i == currentPage ? "active" : "")">
+                    <a href="@Url.Action("ViewComplaint", new { fpage = i,
+frefno = ViewData["FRefNo"],
+                                        fmsn = ViewData["FMSN"],
+ fsdn = ViewData["FSDN"],
+                                        fat = ViewData["FAT"],
+                                        fissueDescription = ViewData["IssueDescription"],
+                                        fstatus = ViewData["Status"],
+                                        fisFaulty = ViewData["IsFaulty"],
+                                        fcreatedDate = ViewData["CreatedDate"],
+                                        fcloseDate = ViewData["CloseDate"],
+                                        fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                        fpageSize = ViewData["pageSize"] })">@i</a>
+                </li>
+            }
+
+            <li class="page-item @(currentPage == totalPage ? "disabled" : "")">
+                <a href="@Url.Action("ViewComplaint", new { fpage = Math.Min(totalPage, currentPage + 1),
+frefno = ViewData["FRefNo"],
+                                        fmsn = ViewData["FMSN"],
+ fsdn = ViewData["FSDN"],
+                                        fat = ViewData["FAT"],
+                                        fissueDescription = ViewData["IssueDescription"],
+                                        fstatus = ViewData["Status"],
+                                        fisFaulty = ViewData["IsFaulty"],
+                                        fcreatedDate = ViewData["CreatedDate"],
+                                        fcloseDate = ViewData["CloseDate"],
+                                        fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                        fpageSize = ViewData["pageSize"] })">&raquo;</a>
+            </li>
+
+            <li class="page-item @(currentPage == totalPage ? "disabled" : "")">
+                <a href="@Url.Action("ViewComplaint", new { fpage = totalPage, 
+frefno = ViewData["FRefNo"],
+                                        fmsn = ViewData["FMSN"],
+ fsdn = ViewData["FSDN"],
+                                        fat = ViewData["FAT"],
+                                        fissueDescription = ViewData["IssueDescription"],
+                                        fstatus = ViewData["Status"],
+                                        fisFaulty = ViewData["IsFaulty"],
+                                        fcreatedDate = ViewData["CreatedDate"],
+                                        fcloseDate = ViewData["CloseDate"],
+                                        fexecuteddateRange = ViewData["ExecutedDateRange"],
+                                        fpageSize = ViewData["pageSize"] })">&laquo;&laquo;</a>
+            </li>
+        }
+    </ul>
+</div>
+@using System.Text.Encodings.Web
+@section scripts
+{
+    <script>
+
+        function confirmDelete(userId, url) {
+            // Convert the JSON string to a JavaScript array
+            var allowedUserIds = JSON.parse('@Html.Raw(allowedUserIdsJson)');
+
+            if (allowedUserIds.includes(userId)) {
+                return confirm('Are you sure you want to delete this complaint?');
+            } else {
+                alert('You are not allowed to delete this complaint.');
+                return false;
+            }
+        }
+        function reloadComplaint(fpage) {
+             var frefno = $('#RefNoFilter').val();
+            var fmsn = $('#MSNFilter').val();
+            var fsdn = $('#subDivisionNameFilter').val();
+            var fopenDescription = $('#openDescriptionFilter').val();
+            var fat = $('#assignedToFilter').val();
+            var fissueDescription = $('#issueDescriptionFilter').val();
+            var fstatus = $('#statusFilter').val();
+            var fisFaulty = $('#isFaultyFilter').val();
+            var fcreateddate = $('#createdDate').val();
+            var fcloseDate = $('#closeDate').val();
+            var fexecuteddateRange = $('#executedDateRange').val();
+            var fpageSize = $('#pageSizeSelector').val();
+            window.location.href = '@Url.Action("ViewComplaint")' + '?fpage=' + fpage + '&fpageSize=' + fpageSize + '&fmsn=' + fmsn + '&frefno=' + frefno + '&fsdn=' + fsdn + '&fat=' + fat  + '&fissueDescription=' + fissueDescription + '&fopenDescription=' + fopenDescription + '&fstatus=' + fstatus + '&fisFaulty=' + fisFaulty + '&fcreateddate=' + fcreateddate + '&fexecuteddateRange=' + fexecuteddateRange + '&fcloseDate=' + fcloseDate;
+        }
+        function exportToPdf(fpage) {
+              var frefno = $('#RefNoFilter').val();
+            var fmsn = $('#MSNFilter').val();
+            var fsdn = $('#subDivisionNameFilter').val();
+            var fat = $('#assignedToFilter').val();
+            var fissueDescription = $('#issueDescriptionFilter').val();
+            var fstatus = $('#statusFilter').val();
+            var fisFaulty = $('#isFaultyFilter').val();
+            var fcreateddate = $('#createdDate').val();
+            var fcloseDate = $('#closeDate').val();
+            var fexecuteddateRange = $('#executedDateRange').val();
+            var fpageSize = $('#pageSizeSelector').val();
+            window.location.href = '@Url.Action("ExportToPDF")' + '?fpage=' + fpage + '&fpageSize=' + fpageSize  + '&fmsn=' + fmsn + '&frefno=' + frefno + '&fsdn=' + fsdn + '&fat=' + fat + '&fissueDescription=' + fissueDescription + '&fstatus=' + fstatus + '&fisFaulty=' + fisFaulty + '&fcreateddate=' + fcreateddate + '&ffexecuteddateRange=' + fexecuteddateRange + '&fcloseDate=' + fcloseDate;
+        }
+        function exportToExcel(fpage) {
+             var frefno = $('#RefNoFilter').val();
+            var fmsn = $('#MSNFilter').val();
+            var fsdn = $('#subDivisionNameFilter').val();
+            var fat = $('#assignedToFilter').val();
+            var fissueDescription = $('#issueDescriptionFilter').val();
+            var fstatus = $('#statusFilter').val();
+            var fisFaulty = $('#isFaultyFilter').val();
+            var fcreateddate = $('#createdDate').val();
+            var fcloseDate = $('#closeDate').val();
+            var fexecuteddateRange = $('#executedDateRange').val();
+            var fpageSize = $('#pageSizeSelector').val();
+            window.location.href = '@Url.Action("ExportToExcel")' + '?fpage=' + fpage + '&fpageSize=' + fpageSize  + '&fmsn=' + fmsn + '&frefno=' + frefno + '&fsdn=' + fsdn + '&fat=' + fat + '&fissueDescription=' + fissueDescription + '&fstatus=' + fstatus + '&fisFaulty=' + fisFaulty + '&fcreateddate=' + fcreateddate + '&fexecuteddateRange=' + fexecuteddateRange + '&fcloseDate=' + fcloseDate;
+        }
+        $(document).ready(function () {
+            // Handle the click event on the group header
+            $('.group-toggle').on('click', function () {
+                var $this = $(this);
+                var referenceNo = $this.data('reference');
+                var $groupBody = $('.group-body[data-reference="' + referenceNo + '"]');
+
+                // Toggle the display of the group body
+                if ($groupBody.is(':visible')) {
+                    $groupBody.hide();
+                    $this.find('.group-icon').text('+');
+                } else {
+                    $groupBody.show();
+                    $this.find('.group-icon').text('-');
+                }
+            });
+            $('#exportPdfBtn').on('click', function () {
+                exportToPdf(@(fpage));
+            });
+            $('#exportExcelBtn').on('click', function () {
+                exportToExcel(@(fpage));
+            });
+            var pageSize = $('#hiddenPageSize').val(); // Get the selected page size from the hidden field
+
+            if (pageSize) {
+                $('#pageSizeSelector').val(pageSize); // Set the selected value
+            }
+            $('#pageSizeSelector').on('change', function () {
+                var selectedPageSize = $(this).val();
+                reloadComplaint(1, selectedPageSize); // Reload with the selected page size
+            });
+            $('.filter-dropdown').select2({
+                multiple: true,
+                dropdownAutoWidth: true
+            });
+            $('.c-filters').on('change', function () {
+                reloadComplaint(@(fpage));
+            });
+            var issueDescriptions = JSON.parse('@Html.Raw(issueDescriptionJson)');
+
+            // Set the selected values for the select element
+            $('#issueDescriptionFilter').val(issueDescriptions).trigger('change.select2');
+
+          $('#RefNoFilter').val([@(frefno.Replace(",", "\",\""))]).trigger('change.select2');
+            $('#MSNFilter').val([@(fmsn)]).trigger('change.select2');
+             $('#subDivisionNameFilter').val([@(fsdn)]).trigger('change.select2');
+            $('#assignedToFilter').val([@(fat)]).trigger('change.select2');
+            $('#statusFilter').val([@(fStatus)]).trigger('change.select2');
+            $('#isFaultyFilter').val([@(fisFaulty)]).trigger('change.select2');
+            // $('#openDescriptionFilter').val("@fopenDescription");
+            $('#openDescriptionFilter').val('@Html.Raw(JavaScriptEncoder.Default.Encode(fopenDescription))');
+
+
+
+            // $('#issueDescriptionFilter').val([@(fissueDescription)]).trigger('change.select2');
+
+            $('#clearFiltersBtn').on('click', function () {
+                var pageSize = $('#pageSizeSelector').val();
+                window.location.href = '@Url.Action("ViewComplaint")' + '?pageSize=' + pageSize;
+            });
+
+            $('#executedDateRange').datepicker({
+                startView: 0,
+                minViewMode: 0,
+                maxViewMode: 2,
+                multidate: true,
+                multidateSeparator: "-",
+                autoClose: true,
+                beforeShowDay: highlightRange,
+            }).on("changeDate", function (event) {
+                var dates = event.dates, elem = $('#executedDateRange');
+                if (dates.length == 2) {
+                    reloadComplaint(@(fpage));
+                }
+                if (elem.data("selecteddates") == dates.join(",")) return;
+                if (dates.length > 2) dates = dates.splice(dates.length - 1);
+                dates.sort(function (a, b) { return new Date(a).getTime() - new Date(b).getTime() });
+                elem.data("selecteddates", dates.join(",")).datepicker('setDates', dates);
+
+            }).on("hide", function (event) {
+                var dates = event.dates, elem = $('#executedDateRange');
+                if (dates.length == 1) {
+                    dates.push(dates[0]);
+                    dates.sort(function (a, b) { return new Date(a).getTime() - new Date(b).getTime() });
+                    elem.data("selecteddates", dates.join(",")).datepicker('setDates', dates);
+                    reloadComplaint(@(fpage));
+                }
+            });
+            function highlightRange(date) {
+                var selectedDates = $('#executedDateRange').datepicker('getDates');
+                if (selectedDates.length === 2 && date >= selectedDates[0] && date <= selectedDates[1]) {
+                    return 'highlighted';
+                }
+                return '';
+            }
+        });
+    </script>
+}
