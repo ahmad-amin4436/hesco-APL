@@ -26,6 +26,7 @@ namespace HESCO.Controllers
             _configuration = configuration;
             _dal = dal;
         }
+        #region General Methods
         public IActionResult Index()
         {
             return View();
@@ -68,6 +69,9 @@ namespace HESCO.Controllers
 
             return Content(htmlContent, "text/html");
         }
+
+        #endregion
+
         #region ExportIMEI
         public async Task<IActionResult> ExportIMEIToExcel(string exportType,
        string fimei = null, string fproject = null, string fchangeProject = null,
