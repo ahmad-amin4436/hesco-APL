@@ -150,19 +150,7 @@
                 <div class="col-md-12 text-right">
                     <a href="@Url.Action("CreateNewIMSI", "Sims")" class="btn btn-success">Create New</a>
                     <a id="btnClearAllFilters" class="btn btn-primary">Clear Filters</a>
-                    <!-- Export Buttons -->
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-info dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="fas fa-download"></i> Export
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="javascript:void(0);" id="exportExcelAll">Excel - All Pages</a></li>
-                            <li><a class="dropdown-item" href="javascript:void(0);" id="exportExcelCurrent">Excel - Current Page</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="javascript:void(0);" id="exportPdfAll">PDF - All Pages</a></li>
-                            <li><a class="dropdown-item" href="javascript:void(0);" id="exportPdfCurrent">PDF - Current Page</a></li>
-                        </ul>
-                    </div>
+                   
                 </div>
                 
             </div>
@@ -198,7 +186,29 @@
                             <th><input type="text" id="CreatedAtFilter" class="form-control form-control-sm"></th>
                             <th><input type="text" id="MapDateTimeFilter" class="form-control form-control-sm"></th>
                             <th><input type="text" id="ChangeProjectDateFilter" class="form-control form-control-sm"></th>
-                            <th></th>
+                            <th>
+                                <!-- Excel Dropdown -->
+                                <div class="btn-group me-2">
+                                    <button type="button" class="btn btn-light p-0" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <img src="~/images/excel.png" alt="Excel" style="width:24px; height:24px;">
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="#" id="exportExcelAll">All Pages</a></li>
+                                        <li><a class="dropdown-item" href="#" id="exportExcelCurrent">Current Page</a></li>
+                                    </ul>
+                                </div>
+
+                                <!-- PDF Dropdown -->
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-light p-0" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <img src="~/images/pdf.png" alt="PDF" style="width:24px; height:24px;">
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="#" id="exportPdfAll">All Pages</a></li>
+                                        <li><a class="dropdown-item" href="#" id="exportPdfCurrent">Current Page</a></li>
+                                    </ul>
+                                </div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody></tbody>

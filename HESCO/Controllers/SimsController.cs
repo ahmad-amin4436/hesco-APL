@@ -517,7 +517,7 @@ namespace HESCO.Controllers
             BaseColor whiteBg = BaseColor.WHITE;
 
             // ======== Title ========
-            Paragraph title = new Paragraph("IMEI Data Export", titleFont)
+            Paragraph title = new Paragraph("IMSI Data Export", titleFont)
             {
                 Alignment = Element.ALIGN_CENTER,
                 SpacingAfter = 20f
@@ -1050,5 +1050,13 @@ namespace HESCO.Controllers
         }
         #endregion
 
+        #region Barcode
+
+        public IActionResult ImportBarcodeData()
+        {
+            return View();
+        }
+       
+        #endregion
     }
 }
