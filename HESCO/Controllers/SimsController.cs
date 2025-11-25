@@ -165,7 +165,7 @@ namespace HESCO.Controllers
         }
         private string FormatDateForExcelNullable(DateTime? dt)
         {
-            if (!dt.HasValue)
+            if (!dt.HasValue || dt.Value == DateTime.MinValue)
                 return "-";
 
             return dt.Value.ToString("yyyy-MM-dd HH:mm");
@@ -622,6 +622,232 @@ namespace HESCO.Controllers
 
         #endregion
 
+        #region ExportBarcode
+        public async Task<IActionResult> ExportBarcodeToExcel(string exportType,
+      string foptocomcode, string fproject, string fchangeProject, string fstatus,
+  string fuploadedBy, string fupdatedBy, string fuploadedAt,
+  string fupdatedAt, string fmapDateTime, string fchangeProjectDate, int fpage = 1, int fpageSize = 50)
+        {
+            try
+            {
+                // For "all" pages, ignore pagination parameters and get all data
+                int page = exportType == "all" ? 1 : fpage;
+                int pageSize = exportType == "all" ? int.MaxValue : fpageSize; // 0 means get all data
+                dynamic result = await _dal.GetBarcodeData(
+                                 foptocomcode, fproject, fchangeProject, fstatus, fuploadedBy, fupdatedBy,
+                                  fuploadedAt, fupdatedAt, fmapDateTime, fchangeProjectDate, page, pageSize, Request.Query["draw"].FirstOrDefault() ?? "1"
+                              );
+                var fileName = exportType == "all" ? "Barcode_Data_All_Pages" : "Barcode_Data_Current_Page";
+
+                byte[] fileBytes = GenerateBarcodeExcelFile(((IEnumerable<BarcodeDataViewModel>)result.data).ToList());
+                return File(fileBytes,
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    $"{fileName}_{DateTime.Now:yyyyMMddHHmmss}.xlsx");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Export failed: {ex.Message}");
+            }
+        }
+
+        public byte[] GenerateBarcodeExcelFile(List<BarcodeDataViewModel> data)
+        {
+            ExcelPackage.License.SetNonCommercialOrganization("Accurate");
+
+            using var package = new ExcelPackage();
+            var worksheet = package.Workbook.Worksheets.Add("Barcode Data");
+
+            // Header styling
+            using (var headerRange = worksheet.Cells[1, 1, 1, 7])
+            {
+                headerRange.Style.Font.Bold = true;
+                headerRange.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                headerRange.Style.Fill.BackgroundColor.SetColor(Color.LightBlue);
+                headerRange.Style.Font.Color.SetColor(Color.White);
+                headerRange.Style.Border.BorderAround(ExcelBorderStyle.Thin);
+            }
+
+            // Headers
+            worksheet.Cells[1, 1].Value = "Optocom Code";
+            worksheet.Cells[1, 2].Value = "Project Name";
+            worksheet.Cells[1, 3].Value = "Change Project Name";
+            worksheet.Cells[1, 4].Value = "Created By";
+            worksheet.Cells[1, 5].Value = "Created At";
+            worksheet.Cells[1, 6].Value = "Map DateTime";
+            worksheet.Cells[1, 7].Value = "Change Project Date";
+
+            // Data
+            for (int i = 0; i < data.Count; i++)
+            {
+                var row = data[i];
+                var rowIndex = i + 2;
+
+                worksheet.Cells[rowIndex, 1].Value = row.serial_no ?? "-";
+                worksheet.Cells[rowIndex, 2].Value = row.project_name ?? "-";
+                worksheet.Cells[rowIndex, 3].Value = row.change_project_name ?? "-";
+                worksheet.Cells[rowIndex, 4].Value = row.created_by_username ?? "-";
+                worksheet.Cells[rowIndex, 5].Value = FormatDateForExcelNullable(row.created_at);
+                worksheet.Cells[rowIndex, 6].Value = FormatDateForExcelNullable(row.map_datetime);
+                worksheet.Cells[rowIndex, 7].Value = FormatDateForExcelNullable(row.change_project_id_at);
+
+
+                // Alternate row coloring
+                if (i % 2 == 0)
+                {
+                    using var rowRange = worksheet.Cells[rowIndex, 1, rowIndex, 7];
+                    rowRange.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                    rowRange.Style.Fill.BackgroundColor.SetColor(Color.LightGray);
+                }
+            }
+
+            // Auto-fit columns
+            worksheet.Cells[worksheet.Dimension.Address].AutoFitColumns();
+
+            // Add borders to all cells
+            using var dataRange = worksheet.Cells[1, 1, data.Count + 1, 7];
+            dataRange.Style.Border.Top.Style = ExcelBorderStyle.Thin;
+            dataRange.Style.Border.Bottom.Style = ExcelBorderStyle.Thin;
+            dataRange.Style.Border.Left.Style = ExcelBorderStyle.Thin;
+            dataRange.Style.Border.Right.Style = ExcelBorderStyle.Thin;
+
+            return package.GetAsByteArray();
+        }
+    
+        public async Task<IActionResult> ExportBarcodeToPDF(string exportType,
+      string foptocomcode, string fproject, string fchangeProject, string fstatus,
+  string fuploadedBy, string fupdatedBy, string fuploadedAt,
+  string fupdatedAt, string fmapDateTime, string fchangeProjectDate, int fpage = 1, int fpageSize = 50)
+        {
+            try
+            {
+                int page = exportType == "all" ? 1 : fpage;
+                int pageSize = exportType == "all" ? int.MaxValue : fpageSize; // 0 means get all data
+                dynamic result = await _dal.GetBarcodeData(
+                                 foptocomcode, fproject, fchangeProject, fstatus, fuploadedBy, fupdatedBy,
+                                  fuploadedAt, fupdatedAt, fmapDateTime, fchangeProjectDate, page, pageSize, Request.Query["draw"].FirstOrDefault() ?? "1"
+                              );
+                var fileName = exportType == "all" ? "Barcod_Data_All_Pages" : "Barcod_Data_Current_Page";
+
+                byte[] fileBytes = GenerateBarcodePdfFile(((IEnumerable<BarcodeDataViewModel>)result.data).ToList());
+                return File(fileBytes,
+                    "application/pdf",
+                    $"{fileName}_{DateTime.Now:yyyyMMddHHmmss}.pdf");
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Export failed: {ex.Message}");
+            }
+        }
+        public byte[] GenerateBarcodePdfFile(List<BarcodeDataViewModel> data)
+        {
+            using var memoryStream = new MemoryStream();
+
+            // PDF document
+            iTextSharp.text.Document document = new iTextSharp.text.Document(PageSize.A4.Rotate(), 10f, 10f, 10f, 10f);
+            PdfWriter.GetInstance(document, memoryStream);
+            document.Open();
+
+            // ======== Styles ========
+            var titleFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 16, BaseColor.DARK_GRAY);
+            var infoFont = FontFactory.GetFont(FontFactory.HELVETICA, 10, BaseColor.GRAY);
+            var headerFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 10, BaseColor.WHITE);
+            var cellFont = FontFactory.GetFont(FontFactory.HELVETICA, 9, BaseColor.BLACK);
+
+            BaseColor headerBackground = new BaseColor(70, 130, 180);
+            BaseColor alternateRowBg = new BaseColor(240, 240, 240);
+            BaseColor whiteBg = BaseColor.WHITE;
+
+            // ======== Title ========
+            Paragraph title = new Paragraph("Barcode Data Export", titleFont)
+            {
+                Alignment = Element.ALIGN_CENTER,
+                SpacingAfter = 20f
+            };
+            document.Add(title);
+
+            // ======== Export Info ========
+            Paragraph exportInfo = new Paragraph(
+                $"Generated on: {DateTime.Now:yyyy-MM-dd HH:mm} | Total Records: {data.Count}",
+                infoFont)
+            {
+                Alignment = Element.ALIGN_LEFT,
+                SpacingAfter = 15f
+            };
+            document.Add(exportInfo);
+
+            // ======== Table ========
+            string[] headers =
+            {
+        "Optocom Code", "Project Name", "Change Project Name",
+        "Created By", "Created At", "Map DateTime", "Change Project Date"
+    };
+
+            PdfPTable table = new PdfPTable(headers.Length)
+            {
+                WidthPercentage = 100,
+                SpacingBefore = 10f,
+                SpacingAfter = 10f
+            };
+
+            // Set equal column widths
+            table.SetWidths(Enumerable.Repeat(2f, headers.Length).ToArray());
+
+            // ======== Add Headers ========
+            foreach (var header in headers)
+            {
+                table.AddCell(CreateCell(header, headerFont, headerBackground, Element.ALIGN_CENTER));
+            }
+
+            // ======== Add Rows ========
+            for (int i = 0; i < data.Count; i++)
+            {
+                var r = data[i];
+                var bg = (i % 2 == 1) ? alternateRowBg : whiteBg;
+
+                table.AddCell(CreateCell(r.serial_no));
+                table.AddCell(CreateCell(r.project_name));
+                table.AddCell(CreateCell(r.change_project_name));
+                table.AddCell(CreateCell(r.created_by_username));
+                table.AddCell(CreateCell(FormatDate(r.created_at)));
+                table.AddCell(CreateCell(FormatDate(r.map_datetime)));
+                table.AddCell(CreateCell(FormatDate(r.change_project_id_at)));
+            }
+
+            document.Add(table);
+            document.Close();
+
+            return memoryStream.ToArray();
+
+
+            // ======== Helper Methods ========
+
+            PdfPCell CreateCell(string text, Font font = null, BaseColor bg = null, int align = Element.ALIGN_LEFT)
+            {
+                string safeText = string.IsNullOrWhiteSpace(text) ? "-" : text;
+
+                return new PdfPCell(new Phrase(safeText, font ?? cellFont))
+                {
+                    BackgroundColor = bg ?? whiteBg,
+                    HorizontalAlignment = align,
+                    Padding = 5f
+                };
+            }
+
+
+            string FormatDate(DateTime? date)
+            {
+                if (date == null || date.Value == DateTime.MinValue)
+                    return "-";
+
+                return date.Value.ToString("yyyy-MM-dd HH:mm");
+            }
+
+
+        }
+
+
+        #endregion
+
         #region IMEI
         public async Task<IActionResult> ImportIMEI()
         {
@@ -1052,11 +1278,183 @@ namespace HESCO.Controllers
 
         #region Barcode
 
-        public IActionResult ImportBarcodeData()
+        public async Task<IActionResult> ImportBarcodeData()
+        {
+            try
+            {
+                var (projectData, error) = await _dal.GetProjectsForCurrentDB();
+
+                if (!string.IsNullOrEmpty(error))
+                {
+                    return BadRequest($"An error occurred: {error}");
+                }
+
+                ViewBag.SelectProject = new SelectList(projectData, "Value", "Text");
+                return View();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"An error occurred: {ex.Message}");
+            }
+        }
+        public IActionResult DownloadTemplateBarcode()
+        {
+            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "Templates", "BarcodeTemplate.xlsx");
+            var fileBytes = System.IO.File.ReadAllBytes(filePath);
+            var fileName = "BarcodeTemplate.xlsx";
+            return File(fileBytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+        }
+        [HttpPost]
+        public async Task<IActionResult> ImportBarcodeData(BarcodeData barcodeData, IFormFile file)
+        {
+            try
+            {
+                // Validate file
+                if (file == null || file.Length == 0)
+                {
+                    return RedirectToAction("ImportBarcodeData", new { error = "No file selected" });
+                }
+
+                // Validate user authentication
+                var userId = HttpContext.Session.GetInt32("UserId");
+                if (!userId.HasValue)
+                {
+                    return RedirectToLogin();
+                }
+
+                // Validate project selection
+                if (string.IsNullOrWhiteSpace(barcodeData.Project))
+                {
+                    return RedirectToAction("ImportBarcodeData", new { error = "Please select a project" });
+                }
+
+                var UserId = userId.Value;
+                var processedOptoComCode = new HashSet<string>();
+
+                ExcelPackage.License.SetNonCommercialOrganization("Accurate");
+
+                using var stream = new MemoryStream();
+                await file.CopyToAsync(stream);
+
+                using var package = new ExcelPackage(stream);
+                var worksheet = package.Workbook.Worksheets.First();
+                var rowCount = worksheet.Dimension.Rows;
+
+                for (int row = 2; row <= rowCount; row++) // Skip header row
+                {
+                    var OptoComCode = worksheet.Cells[row, 1].Text?.Trim();
+
+                    if (!string.IsNullOrWhiteSpace(OptoComCode) && !processedOptoComCode.Contains(OptoComCode))
+                    {
+                        processedOptoComCode.Add(OptoComCode);
+                        await _dal.ImportBarcodeData(OptoComCode, userId, barcodeData.Project);
+                    }
+                }
+
+                // Bulk import using DAL
+
+                return RedirectToAction("ViewBarcodeList");
+            }
+            catch (Exception ex)
+            {
+                return RedirectToAction("ImportIMEI", new { error = "An error occurred during import" });
+            }
+        }
+
+        public IActionResult ViewBarcodeList()
         {
             return View();
         }
-       
+
+        [HttpGet]
+        public async Task<JsonResult> GetBarcodeData(
+   string foptocomcode, string fproject, string fchangeProject, string fstatus,
+   string fuploadedBy, string fupdatedBy, string fuploadedAt,
+   string fupdatedAt, string fmapDateTime, string fchangeProjectDate,
+   int fpage = 1, int fpageSize = 50, string suggestionType = null, string searchTerm = null)
+        {
+            try
+            {
+                // Handle select2 suggestions for dropdown filters
+                if (!string.IsNullOrEmpty(suggestionType) && !string.IsNullOrEmpty(searchTerm))
+                {
+                    var suggestions = await _dal.GetBarcodeSuggestions(suggestionType, searchTerm);
+                    return Json(suggestions);
+                }
+
+                // Handle datatable server-side processing
+                var result = await _dal.GetBarcodeData(
+                    foptocomcode, fproject, fchangeProject, fstatus, fuploadedBy, fupdatedBy,
+                    fuploadedAt, fupdatedAt, fmapDateTime, fchangeProjectDate, fpage, fpageSize, Request.Query["draw"].FirstOrDefault() ?? "1");
+
+                return Json(result);
+            }
+            catch (Exception ex)
+            {
+                return Json(new
+                {
+                    draw = Convert.ToInt32(Request.Query["draw"].FirstOrDefault() ?? "1"),
+                    recordsTotal = 0,
+                    recordsFiltered = 0,
+                    data = new List<object>(),
+                    error = ex.Message
+                });
+            }
+        }
+        public async Task<JsonResult> LoadBarcodeSearchDDL(string suggestionType)
+        {
+            if (string.IsNullOrWhiteSpace(suggestionType))
+                return Json(new { success = false, message = "Suggestion type is required." });
+            try
+            {
+                var suggestions = await _dal.LoadBarcodeSearchDDL(suggestionType);
+
+                return Json(new { success = true, data = suggestions.ToList() });
+            }
+            catch (MySqlException ex) when (ex.Number == 1644) // Custom error for invalid type
+            {
+                return Json(new { success = false, message = "Invalid suggestion type." });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpGet]
+        public async Task<JsonResult> GetBarcodeDetails(int id)
+        {
+            try
+            {
+                var imei = await _dal.GetBarcodeDetails(id);
+
+                if (imei == null)
+                {
+                    return Json(new { success = false, message = "IMEI not found" });
+                }
+
+                return Json(new { success = true, data = imei });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
+
+        [HttpPost]
+        public async Task<JsonResult> DeleteBarcode(int id)
+        {
+            try
+            {
+                var result = await _dal.DeleteBarcode(id);
+
+                return Json(new { success = result.success, message = result.message });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message });
+            }
+        }
         #endregion
     }
 }

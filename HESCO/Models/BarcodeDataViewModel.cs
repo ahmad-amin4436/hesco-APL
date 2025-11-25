@@ -2,17 +2,20 @@
 {
     public class BarcodeDataViewModel
     {
-        public int Id { get; set; }
-        public string OptoComCode { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
-        public int CreatedBy { get; set; }
-        public string CreatedByUsername { get; set; }
-        public int UpdatedBy { get; set; }
-        public int BarcodeFlag { get; set; }
-        public string UpdatedByUsername { get; set; }
-        public string ProjectName { get; set; }
-        public DateTime ChangeProjectIdAt { get; set; }
-        public string ChangeProjectName { get; set; }
+        public int id { get; set; }
+        public string serial_no { get; set; }
+        public DateTime created_at { get; set; }
+        public DateTime updated_at { get; set; }
+        public DateTime map_datetime { get; set; }
+        public int created_by { get; set; }
+        public string created_by_username { get; set; }
+        public int updated_by { get; set; }
+        public int barcode_flag { get; set; }
+        public string updated_by_username { get; set; }
+        public string project_name { get; set; }
+        public int project_id { get; set; }
+        public int change_project_id { get; set; }
+        public DateTime change_project_id_at { get; set; }
+        public string change_project_name { get; set; }
     }
 }

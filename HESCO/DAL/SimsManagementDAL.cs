@@ -339,7 +339,7 @@ namespace HESCO.DAL
                 commandType: CommandType.StoredProcedure
             );
         }
-
+       
         public async Task<IEnumerable<dynamic>> LoadIMEISearchDDL(string suggestionType)
         {
             using var db = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection"));
@@ -352,5 +352,140 @@ namespace HESCO.DAL
         }
         #endregion
 
+
+        #region Barcode
+        public async Task ImportBarcodeData(string OptoComCode, int? userId, string projectId)
+        {
+            using var db = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection"));
+
+            await db.ExecuteAsync(
+                "ImportBarcodeData",
+                new
+                {
+                    p_OptoComCode = OptoComCode,
+                    p_user_id = userId,
+                    p_project_id = projectId
+                },
+                commandType: CommandType.StoredProcedure
+            );
+        }
+        public async Task<object> GetBarcodeSuggestions(string suggestionType, string searchTerm)
+        {
+            // Determine which connection to use based on suggestion type
+            using var connection = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection"));
+
+            try
+            {
+                var parameters = new DynamicParameters();
+                parameters.Add("p_suggestion_type", suggestionType);
+                parameters.Add("p_search_term", searchTerm);
+
+                var suggestions = await connection.QueryAsync<dynamic>(
+                    "GetBarcodeSuggestions",
+                    parameters,
+                    commandType: CommandType.StoredProcedure
+                );
+
+                return suggestions.ToList();
+            }
+            catch (MySqlException ex) when (ex.Number == 1644) // Custom error code for invalid type
+            {
+                throw new ArgumentException("Invalid suggestion type");
+            }
+        }
+        public async Task<object> GetBarcodeData(
+  string foptocomcode, string fproject, string fchangeProject, string fstatus,
+  string fuploadedBy, string fupdatedBy, string fuploadedAt,
+  string fupdatedAt, string fmapDateTime, string fchangeProjectDate,
+  int fpage, int fpageSize, string draw)
+        {
+            using var connection = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection"));
+
+            var parameters = new DynamicParameters();
+            parameters.Add("p_optocomcode", foptocomcode);
+            parameters.Add("p_fproject", fproject);
+            parameters.Add("p_fchangeProject", fchangeProject);
+            parameters.Add("p_fstatus", fstatus);
+            parameters.Add("p_fuploadedBy", fuploadedBy);
+            parameters.Add("p_fupdatedBy", fupdatedBy);
+            parameters.Add("p_fuploadedAt", fuploadedAt);
+            parameters.Add("p_fupdatedAt", fupdatedAt);
+            parameters.Add("p_fmapDateTime", fmapDateTime);
+            parameters.Add("p_fchangeProjectDate", fchangeProjectDate);
+            parameters.Add("p_fpage", fpage);
+            parameters.Add("p_fpageSize", fpageSize);
+
+            using var multi = await connection.QueryMultipleAsync(
+                "GetBarcodeData",
+                parameters,
+                commandType: CommandType.StoredProcedure
+            );
+
+            var recordsTotal = await multi.ReadSingleAsync<int>();
+            var data = await multi.ReadAsync<BarcodeDataViewModel>();
+
+            return new
+            {
+                draw = draw,
+                recordsTotal = recordsTotal,
+                recordsFiltered = recordsTotal,
+                data = data
+            };
+        }
+
+        public async Task<IEnumerable<dynamic>> LoadBarcodeSearchDDL(string suggestionType)
+        {
+            using var db = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection"));
+            var parameters = new { p_suggestion_type = suggestionType };
+            return await db.QueryAsync<dynamic>(
+                "LoadBarcodeSearchDDL",
+                parameters,
+                commandType: CommandType.StoredProcedure
+            );
+        }
+        public async Task<BarcodeDataViewModel> GetBarcodeDetails(int id)
+        {
+            using var connection = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection"));
+
+            try
+            {
+                var parameters = new { p_id = id };
+
+                var barcode = await connection.QueryFirstOrDefaultAsync<BarcodeDataViewModel>(
+                    "GetBarcodeDetails",
+                    parameters,
+                    commandType: CommandType.StoredProcedure
+                );
+
+                return barcode;
+            }
+            catch (MySqlException ex) when (ex.Number == 1644) // Custom error for not found
+            {
+                return null; // Or throw a custom exception
+            }
+        }
+
+        public async Task<(bool success, string message)> DeleteBarcode(int id)
+        {
+            try
+            {
+                using var connection = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection"));
+
+                var parameters = new { p_id = id };
+
+                var result = await connection.QueryFirstOrDefaultAsync<(bool success, string message)>(
+                    "DeleteBarcode",
+                    parameters,
+                    commandType: CommandType.StoredProcedure
+                );
+
+                return (result.success, result.message);
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Error deleting IMEI: {ex.Message}");
+            }
+        }
+        #endregion
     }
 }
