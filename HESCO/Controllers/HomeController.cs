@@ -41,10 +41,10 @@ namespace HESCO.Controllers
                 var rolesData = (await db.QueryAsync<DTODropdown>(rolesQuery)).Distinct().ToList();
 
                 // If the logged-in user is NOT a Super Admin (role ID != 1), remove "Super Admin" from the list
-                if (loggedInUserRole != "1")
-                {
-                    rolesData = rolesData.Where(r => r.Value != "1").ToList();
-                }
+                //if (loggedInUserRole != "1")
+                //{
+                //    rolesData = rolesData.Where(r => r.Value != "1").ToList();
+                //}
 
                 ViewBag.SelectRole = new SelectList(rolesData, "Value", "Text");
 
@@ -55,6 +55,24 @@ namespace HESCO.Controllers
 
             return View();
         }
+        [HttpGet]
+        public IActionResult GetRoleRights(int role_id)
+        {
+            using (IDbConnection db = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+            {
+                var parameters = new DynamicParameters();
+                parameters.Add("p_role_id", role_id, DbType.Int32, ParameterDirection.Input);
+
+                var result = db.Query(
+                    "GetRoleRights", // Stored procedure name
+                    parameters,
+                    commandType: CommandType.StoredProcedure
+                ).ToList();
+
+                return new JsonResult(result); // ASP.NET Core handles GET JSON safely
+            }
+        }
+
 
         //[HttpGet]
         //public async Task<IActionResult> CreateUser()
@@ -85,8 +103,8 @@ namespace HESCO.Controllers
             string authKey = GenerateAuthKey(userData.Username);
 
             string insertQuery = @"
-            INSERT INTO user (username, auth_key, password_hash, name, email, created_at, contact_number, user_role, group_id)
-            VALUES (@Username, @AuthKey, @Password, @Name, @Email, @CreatedAt, @ContactNumber, @UserRole, @Team)";
+            INSERT INTO user (username, auth_key, password_hash, name, email, created_at, contact_number, user_role, group_id,updated_at)
+            VALUES (@Username, @AuthKey, @Password, @Name, @Email, @CreatedAt, @ContactNumber, @UserRole, @Team, @UpdatedAt)";
 
             if (ModelState.IsValid)
             {
@@ -104,6 +122,7 @@ namespace HESCO.Controllers
                             command.Parameters.Add("@CreatedAt", MySqlDbType.Int32).Value = userData.CreatedAt;
                             command.Parameters.Add("@ContactNumber", MySqlDbType.VarChar).Value = userData.ContactNumber;
                             command.Parameters.Add("@UserRole", MySqlDbType.Int32).Value = userData.UserRole;
+                            command.Parameters.Add("@UpdatedAt", MySqlDbType.Int32).Value = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
                             // Set the Team parameter to DBNull if the role is not "Team Lead" or "Team Member"
                             if (userData.UserRole == "3" || userData.UserRole == "4" || userData.UserRole == "19")
@@ -116,6 +135,24 @@ namespace HESCO.Controllers
                             }
                             connection.Open();
                             await command.ExecuteNonQueryAsync();
+                        }
+                        var getIdQuery = "SELECT LAST_INSERT_ID();";
+
+                        int newUserId = connection.ExecuteScalar<int>(getIdQuery);
+
+                        foreach (var rightId in userData.SelectedRights)
+                        {
+                            // Update allow_access in user_menu_new for each selected right
+                            var sql = @"
+                                    UPDATE user_menu_new
+                                    SET allow_access = CASE
+                                        WHEN allow_access IS NULL OR allow_access = '' THEN @UserId
+                                        WHEN FIND_IN_SET(@UserId, allow_access) = 0 THEN CONCAT(allow_access, ',', @UserId)
+                                        ELSE allow_access
+                                    END
+                                    WHERE id = @RightId;"; // or your column that maps to the selected right
+
+                            connection.Execute(sql, new { UserId = newUserId.ToString(), RightId = rightId });
                         }
                     }
                 }
@@ -472,6 +509,42 @@ namespace HESCO.Controllers
                         }
                         connection.Close();
                     }
+                    // Get user role for the given user
+                    string UserRoleQuery = "SELECT user_role FROM user WHERE id = @UserID";
+                    int role_id = await connection.ExecuteScalarAsync<int>(UserRoleQuery, new { UserID = id });
+
+                    // Get previous rights where allow_access contains this RoleID
+                    string PreviousRightsQuery = @"
+    SELECT id AS Value, title AS Text
+    FROM user_menu_new
+    WHERE FIND_IN_SET(@UserID, allow_access);
+";
+                    var result = (await connection.QueryAsync<DTODropdown>(
+                            PreviousRightsQuery,
+                            new { UserID = id }
+                        ))
+                        .Distinct()
+                        .ToList();
+
+                    // Convert string IDs to int for the model
+                    var selectedIds = result.Select(x => int.Parse(x.Value.ToString())).ToList();
+
+                    // Initialize model and assign selected rights
+
+                    userData.SelectedRights = selectedIds;
+                    
+
+                    // Pass dropdown list to ViewBag (use integers as Value)
+                    ViewBag.PreviousRights = new SelectList(
+                        result.Select(x => new { Value = int.Parse(x.Value.ToString()), Text = x.Text }),
+                        "Value",
+                        "Text",
+                        selectedIds // this sets which items are selected
+                    );
+
+
+
+
                 }
             }
             catch (Exception ex)
@@ -538,7 +611,43 @@ namespace HESCO.Controllers
                             command.Parameters.Add("@UpdatedAt", MySqlDbType.Int32).Value = userData.UpdatedAt;
                             connection.Open();
                             await command.ExecuteNonQueryAsync();
+
                         }
+                        // 1) Remove the user ID from ALL allow_access rows (only if present)
+                        var deletePreviousRights = @"
+    UPDATE user_menu_new
+    SET allow_access = 
+        CASE
+            WHEN allow_access IS NULL OR allow_access = '' THEN NULL
+            WHEN TRIM(allow_access) = CAST(@UserId AS CHAR) THEN NULL
+            ELSE NULLIF(
+                TRIM(BOTH ',' FROM REPLACE(CONCAT(',', allow_access, ','), CONCAT(',', CAST(@UserId AS CHAR), ','), ',')),
+                ''
+            )
+        END
+    WHERE FIND_IN_SET(@UserId, allow_access);
+";
+
+                        // Execute user cleanup
+                        connection.Execute(deletePreviousRights, new { UserId = userData.UserId });
+
+
+                        // 2) Insert new rights
+                        foreach (var rightId in userData.SelectedRights)
+                        {
+                            var sql = @"
+                                        UPDATE user_menu_new
+                                        SET allow_access = CASE
+                                            WHEN allow_access IS NULL OR allow_access = '' THEN @UserId
+                                            WHEN FIND_IN_SET(@UserId, allow_access) = 0 THEN CONCAT(allow_access, ',', @UserId)
+                                            ELSE allow_access
+                                        END
+                                        WHERE id = @RightId;
+                                    ";
+
+                            connection.Execute(sql, new { UserId = userData.UserId, RightId = rightId });
+                        }
+
                     }
                 }
                 catch (Exception ex)

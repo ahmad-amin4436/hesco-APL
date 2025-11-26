@@ -63,6 +63,13 @@
                             </select>
                             <span asp-validation-for="UserRole" class="text-danger"></span>
                         </div>
+                        <div class="form-group" id="Rights_DDL" style="display:none">
+                            <label  class="control-label"></label>
+                            <select asp-for="SelectedRights" class="form-control" id="userRightsSelect" multiple>
+                                <option value="">Select Rights</option>
+                            </select>
+                            
+                        </div>
                         <div class="form-group" id="teamDropdown" style="display:none;">
                             <label asp-for="Team" class="control-label"></label>
                             <select asp-for="Team" class="form-control" asp-items="ViewBag.SelectTeam">
@@ -88,6 +95,15 @@
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
     <script>
+        // $(document).ready(function() {
+        //     // Initialize Select2
+        //     $('#userRightsSelect').select2({
+        //         placeholder: "Select Rights",
+        //         width: '100%'
+        //     });
+           
+        // });
+
         document.getElementById("togglePassword").addEventListener("click", function () {
             var passwordInput = document.getElementById("password");
             var icon = this.querySelector("i");
@@ -104,7 +120,12 @@
         document.getElementById("userRoleSelect").addEventListener("change", function () {
             var selectedRoleId = this.value; // Get selected role ID
             var teamDropdown = document.getElementById("teamDropdown");
-
+            if(!selectedRoleId){
+                $('#Rights_DDL').hide();
+            }
+            else{
+                 ShowRoleRights(selectedRoleId);
+            }
             // Check if the role ID matches 3, 4, or 19
             if (selectedRoleId === "3" || selectedRoleId === "4" || selectedRoleId === "19") {
                 teamDropdown.style.display = "block";
@@ -113,7 +134,33 @@
                 document.getElementById("teamDropdown").querySelector("select").selectedIndex = -1; // Clear selection
             }
         });
+         function ShowRoleRights(roleId) {
+            $.ajax({
+                url: '@Url.Action("GetRoleRights", "Home")',
+                type: 'GET',
+                data: { role_id: roleId },
+                dataType: 'json',
+                success: function(response) {
+                    $('#userRightsSelect').empty();
+                                    $('#Rights_DDL').show();
 
+                    // Map DTO fields (Id, Action) to Value/Text
+                    $.each(response, function(index, result) {
+                        debugger;
+                        $('#userRightsSelect').append(
+                            $('<option>', {
+                                value: result.id,
+                                text: result.title
+                            })
+                        );
+                    });
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error fetching role rights:', error);
+                    alert('Failed to load role rights.');
+                }
+            });
+        }
         // Ensure team dropdown is shown/hidden correctly on page load
         document.getElementById("userRoleSelect").dispatchEvent(new Event("change"));
         // document.getElementById("userRoleSelect").addEventListener("change", function () {

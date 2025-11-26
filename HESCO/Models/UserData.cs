@@ -34,5 +34,7 @@ namespace HESCO.Models
         public string? Team { get; set; }    
         public int? CreatedAt { get; set; }
         public int? UpdatedAt { get; set; }
+        public List<int> SelectedRights { get; set; } = new List<int>();
+
     }
 }
