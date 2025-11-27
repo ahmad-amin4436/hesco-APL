@@ -24,6 +24,8 @@ builder.Services.AddLogging(config =>
     config.AddConsole();
     config.AddDebug();
 });
+builder.Services.AddHttpContextAccessor();
+
 // Add session services
 builder.Services.AddSession(options =>
 {

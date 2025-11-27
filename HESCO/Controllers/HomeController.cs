@@ -1,13 +1,15 @@
+﻿using BCrypt.Net;
 using Dapper;
 using HESCO.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using MySql.Data.MySqlClient;
+using NuGet.Protocol.Plugins;
 using Org.BouncyCastle.Crypto.Generators;
+using System;
 using System.Data;
 using System.Diagnostics;
 using System.Security.Cryptography;
-using BCrypt.Net;
 using X.PagedList.Extensions;
 
 namespace HESCO.Controllers
@@ -55,6 +57,78 @@ namespace HESCO.Controllers
 
             return View();
         }
+        [HttpGet]
+        public IActionResult GetUserRbacTree()
+        {
+            var tree = GetUserTree();
+            return Json(tree); // return as JSON for AJAX
+        }
+        [HttpGet]
+        public IActionResult GetRightofRoleTree(int role_id)
+        {
+            using (IDbConnection db = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+            {
+               
+
+                // 2️⃣ Get all RBAC IDs assigned to the role
+                string roleRightsQuery = "SELECT rbac_id FROM roles_permissions WHERE role_id = @RoleID";
+                var assignedIds = db.Query<int>(roleRightsQuery, new { RoleID = role_id }).ToList();
+
+                // 3️⃣ Return both as JSON
+                return Json(new { assignedIds = assignedIds });
+            }
+        }
+
+        public IEnumerable<dynamic> GetUserTree()
+        {
+            using (IDbConnection db = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+            {
+                string sql = @"
+WITH RECURSIVE rbac_tree AS (
+    -- Anchor member: direct permissions for the user
+    SELECT rba.id, rba.controller, rba.action, rba.parent_id
+    FROM USER u
+    JOIN roles_permissions r ON u.user_role = r.role_id
+    JOIN rbac_new rba ON r.rbac_id = rba.id
+    WHERE rba.is_active = 1  
+
+    UNION ALL
+
+    -- Recursive member: children of previous level
+    SELECT child.id, child.controller, child.action, child.parent_id
+    FROM rbac_new child
+    JOIN rbac_tree parent ON child.parent_id = parent.id
+    WHERE child.is_active = 1
+)
+SELECT id, controller, action, parent_id
+FROM rbac_tree
+GROUP BY id, controller, action, parent_id
+ORDER BY parent_id, id;";
+
+                return db.Query(sql);
+            }
+        }
+
+        [HttpGet]
+        public IActionResult ShowActionRights(int role_id)
+        {
+            using (IDbConnection db = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection")))
+            {
+                string rolesQuery = @"SELECT rn.id AS id, rn.action
+                                    FROM roles_permissions rp
+                                    JOIN rbac_new rn 
+                                        ON rn.id = rp.rbac_id
+                                    JOIN user_menu_new um 
+		                                ON um.link != rn.action
+                                    WHERE (rn.parent_id != 0 OR rn.parent_id IS NOT NULL) AND rp.role_id = @RoleID
+                                    GROUP BY rn.id,rn.action;";
+                var actionData = (db.Query(rolesQuery, new { RoleID = role_id }))
+                                     .ToList();
+
+                return new JsonResult(actionData); // ASP.NET Core handles GET JSON safely
+            }
+        }
+
         [HttpGet]
         public IActionResult GetRoleRights(int role_id)
         {
@@ -140,20 +214,45 @@ namespace HESCO.Controllers
 
                         int newUserId = connection.ExecuteScalar<int>(getIdQuery);
 
-                        foreach (var rightId in userData.SelectedRights)
+                        foreach (var right in userData.SelectedRights)
                         {
-                            // Update allow_access in user_menu_new for each selected right
                             var sql = @"
-                                    UPDATE user_menu_new
-                                    SET allow_access = CASE
-                                        WHEN allow_access IS NULL OR allow_access = '' THEN @UserId
-                                        WHEN FIND_IN_SET(@UserId, allow_access) = 0 THEN CONCAT(allow_access, ',', @UserId)
-                                        ELSE allow_access
-                                    END
-                                    WHERE id = @RightId;"; // or your column that maps to the selected right
+                                        UPDATE user_menu_new AS um
+                                        JOIN rbac_new AS rn ON 
+                                            um.controller = rn.controller
+                                             AND um.link LIKE CONCAT('%', rn.action, '%')
+                                        SET um.allow_access =
+                                            CASE
+                                                WHEN um.allow_access IS NULL OR um.allow_access = '' 
+                                                    THEN @UserId
+                                                WHEN FIND_IN_SET(@UserId, um.allow_access) = 0
+                                                    THEN CONCAT(um.allow_access, ',', @UserId)
+                                                ELSE um.allow_access
+                                            END
+                                        WHERE rn.id = @RightId;
+                                    ";
 
-                            connection.Execute(sql, new { UserId = newUserId.ToString(), RightId = rightId });
+                            connection.Execute(sql, new
+                            {
+                                UserId = newUserId.ToString(),
+                                RightId = right.Id
+                            });
+                            // Insert into action_master
+                            string insertSql = @"
+        INSERT INTO action_master (action_id, action_name, user_id)
+        VALUES (@ActionId, @ActionName, @UserId);";
+
+                            connection.Execute(insertSql, new
+                            {
+                                ActionId = right.Id,
+                                ActionName = right.Label,
+                                UserId = newUserId.ToString()
+                            });
                         }
+
+                       
+
+
                     }
                 }
                 catch (Exception ex)
@@ -512,36 +611,15 @@ namespace HESCO.Controllers
                     // Get user role for the given user
                     string UserRoleQuery = "SELECT user_role FROM user WHERE id = @UserID";
                     int role_id = await connection.ExecuteScalarAsync<int>(UserRoleQuery, new { UserID = id });
+                    // Fetch all previous rights of the user as a list
+                    string userPreviousRightsQuery = "SELECT action_id FROM action_master WHERE user_id = @UserID";
+                    var userPreviousRights = (await connection.QueryAsync<int>(
+                        userPreviousRightsQuery,
+                        new { UserID = id }
+                    )).ToList();
 
-                    // Get previous rights where allow_access contains this RoleID
-                    string PreviousRightsQuery = @"
-    SELECT id AS Value, title AS Text
-    FROM user_menu_new
-    WHERE FIND_IN_SET(@UserID, allow_access);
-";
-                    var result = (await connection.QueryAsync<DTODropdown>(
-                            PreviousRightsQuery,
-                            new { UserID = id }
-                        ))
-                        .Distinct()
-                        .ToList();
-
-                    // Convert string IDs to int for the model
-                    var selectedIds = result.Select(x => int.Parse(x.Value.ToString())).ToList();
-
-                    // Initialize model and assign selected rights
-
-                    userData.SelectedRights = selectedIds;
-                    
-
-                    // Pass dropdown list to ViewBag (use integers as Value)
-                    ViewBag.PreviousRights = new SelectList(
-                        result.Select(x => new { Value = int.Parse(x.Value.ToString()), Text = x.Text }),
-                        "Value",
-                        "Text",
-                        selectedIds // this sets which items are selected
-                    );
-
+                    // Store in ViewBag for view usage (pre-select checkboxes)
+                    ViewBag.UserPreviousRights = userPreviousRights;
 
 
 
@@ -630,24 +708,49 @@ namespace HESCO.Controllers
 
                         // Execute user cleanup
                         connection.Execute(deletePreviousRights, new { UserId = userData.UserId });
+                        string deletePreviousQuery = @"DELETE FROM action_master WHERE user_id = @UserId;";
 
+                        connection.Execute(deletePreviousQuery, new
+                        {
+                            UserId = userData.UserId
+                        });
 
                         // 2) Insert new rights
-                        foreach (var rightId in userData.SelectedRights)
+                        foreach (var right in userData.SelectedRights)
                         {
                             var sql = @"
-                                        UPDATE user_menu_new
-                                        SET allow_access = CASE
-                                            WHEN allow_access IS NULL OR allow_access = '' THEN @UserId
-                                            WHEN FIND_IN_SET(@UserId, allow_access) = 0 THEN CONCAT(allow_access, ',', @UserId)
-                                            ELSE allow_access
-                                        END
-                                        WHERE id = @RightId;
+                                        UPDATE user_menu_new AS um
+                                        JOIN rbac_new AS rn ON 
+                                            um.controller = rn.controller
+                                             AND um.link LIKE CONCAT('%', rn.action, '%')
+                                        SET um.allow_access =
+                                            CASE
+                                                WHEN um.allow_access IS NULL OR um.allow_access = '' 
+                                                    THEN @UserId
+                                                WHEN FIND_IN_SET(@UserId, um.allow_access) = 0
+                                                    THEN CONCAT(um.allow_access, ',', @UserId)
+                                                ELSE um.allow_access
+                                            END
+                                        WHERE rn.id = @RightId;
                                     ";
 
-                            connection.Execute(sql, new { UserId = userData.UserId, RightId = rightId });
-                        }
+                            connection.Execute(sql, new
+                            {
+                                UserId = userData.UserId,
+                                RightId = right.Id
+                            });
+                            // Insert into action_master
+                            string insertSql = @"
+        INSERT INTO action_master (action_id, action_name, user_id)
+        VALUES (@ActionId, @ActionName, @UserId);";
 
+                            connection.Execute(insertSql, new
+                            {
+                                ActionId = right.Id,
+                                ActionName = right.Label,
+                                UserId = userData.UserId
+                            });
+                        }
                     }
                 }
                 catch (Exception ex)

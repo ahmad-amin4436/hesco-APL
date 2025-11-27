@@ -8,6 +8,23 @@
 
 
 
+<style>
+    .tree-toggle {
+        cursor: pointer;
+        margin-right: 5px;
+        font-weight: bold;
+        color: #007bff;
+    }
+
+        .tree-toggle:hover {
+            color: #0056b3;
+        }
+
+    ul.tree, ul.tree ul {
+        list-style-type: none;
+        padding-left: 20px;
+    }
+</style>
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-md-6 col-sm-10">
@@ -59,17 +76,29 @@
                         <div class="form-group">
                             <label asp-for="UserRole" class="control-label"></label>
                             <select asp-for="UserRole" class="form-control" asp-items="ViewBag.SelectRole" id="userRoleSelect">
-                                <option value="">Select Role</option>
+                                <option value="" disabled selected>Select Role</option>
                             </select>
                             <span asp-validation-for="UserRole" class="text-danger"></span>
                         </div>
-                        <div class="form-group" id="Rights_DDL" style="display:none">
-                            <label  class="control-label"></label>
+                        <ul id="rbacTree" class="tree">
+                            <!-- Tree will populate here -->
+                        </ul>
+                        @* <div class="form-group" id="Rights_DDL" style="display:none">
+                            <label class="control-label">Select Menues</label>
                             <select asp-for="SelectedRights" class="form-control" id="userRightsSelect" multiple>
-                                <option value="">Select Rights</option>
+                                <option value="">Select Menues</option>
                             </select>
                             
                         </div>
+                        <div class="form-group" id="Action_DDL" style="display:none">
+                            <label class="control-label">Exclude Actions</label>
+                            <select class="form-control" id="userActionSelect" multiple>
+                                <option value="">Select Actions</option>
+                            </select>
+                            
+                        </div> *@
+                        <div id="selectedRightsContainer"></div>
+
                         <div class="form-group" id="teamDropdown" style="display:none;">
                             <label asp-for="Team" class="control-label"></label>
                             <select asp-for="Team" class="form-control" asp-items="ViewBag.SelectTeam">
@@ -103,7 +132,8 @@
         //     });
            
         // });
-
+               
+        
         document.getElementById("togglePassword").addEventListener("click", function () {
             var passwordInput = document.getElementById("password");
             var icon = this.querySelector("i");
@@ -120,12 +150,7 @@
         document.getElementById("userRoleSelect").addEventListener("change", function () {
             var selectedRoleId = this.value; // Get selected role ID
             var teamDropdown = document.getElementById("teamDropdown");
-            if(!selectedRoleId){
-                $('#Rights_DDL').hide();
-            }
-            else{
-                 ShowRoleRights(selectedRoleId);
-            }
+            
             // Check if the role ID matches 3, 4, or 19
             if (selectedRoleId === "3" || selectedRoleId === "4" || selectedRoleId === "19") {
                 teamDropdown.style.display = "block";
@@ -134,33 +159,154 @@
                 document.getElementById("teamDropdown").querySelector("select").selectedIndex = -1; // Clear selection
             }
         });
-         function ShowRoleRights(roleId) {
-            $.ajax({
-                url: '@Url.Action("GetRoleRights", "Home")',
-                type: 'GET',
-                data: { role_id: roleId },
-                dataType: 'json',
-                success: function(response) {
-                    $('#userRightsSelect').empty();
-                                    $('#Rights_DDL').show();
+                     let treeEventsBound = false;   // Prevent double binding
+        let previousRights = [];       // Stores pre-assigned rights
 
-                    // Map DTO fields (Id, Action) to Value/Text
-                    $.each(response, function(index, result) {
-                        debugger;
-                        $('#userRightsSelect').append(
-                            $('<option>', {
-                                value: result.id,
-                                text: result.title
-                            })
-                        );
-                    });
+        // 1️⃣ Fetch assigned RBAC IDs for the selected role
+        function GetRightofRoleTree(role_id) {
+            $.ajax({
+                url: '@Url.Action("GetRightofRoleTree", "Home")',
+                type: 'GET',
+                data: { role_id: role_id },
+                success: function (data) {
+                    // Convert all IDs to number for safe comparison
+                    previousRights = data.assignedIds.map(Number);
+
+                    // Render the tree after fetching assigned rights
+                    ShowRoleRights();
                 },
-                error: function(xhr, status, error) {
-                    console.error('Error fetching role rights:', error);
-                    alert('Failed to load role rights.');
+                error: function () {
+                    alert("Failed to load role rights.");
                 }
             });
         }
+
+        // 2️⃣ Render the hierarchical RBAC tree
+        function ShowRoleRights() {
+            $.ajax({
+                url: '@Url.Action("GetUserRbacTree", "Home")',
+                type: 'GET',
+                success: function (data) {
+                    // Build map for parent-child relationships
+                    const map = {};
+                    const roots = [];
+
+                    data.forEach(item => {
+                        item.children = [];
+                        map[item.id] = item;
+                    });
+
+                    data.forEach(item => {
+                        if (item.parent_id && map[item.parent_id]) {
+                            map[item.parent_id].children.push(item);
+                        } else {
+                            roots.push(item);
+                        }
+                    });
+
+                    // Recursive function to render tree HTML
+                    function renderTree(nodes) {
+                        let html = "<ul>";
+
+                        nodes.forEach(node => {
+                            const hasChildren = node.children.length > 0;
+                            const label = !node.parent_id ? (node.controller || "") : (node.action || "");
+
+                            const isChecked = previousRights.includes(node.id) ? "checked" : "";
+
+                            html += `<li>`;
+                            html += hasChildren ? `<span class="tree-toggle">[+]</span>` : `<span class="tree-spacer"></span>`;
+                            html += `<input type="checkbox" class="rbac-checkbox" value="${node.id}" ${isChecked}>
+                                     <label>${label}</label>`;
+
+                            if (hasChildren) {
+                                html += renderTree(node.children);
+                            }
+
+                            html += `</li>`;
+                        });
+
+                        html += "</ul>";
+                        return html;
+                    }
+
+                    // Insert tree into DOM
+                    $("#rbacTree").html(renderTree(roots));
+
+                    // Collapse all sub-levels initially
+                    $("#rbacTree ul ul").hide();
+
+                    // Bind events once
+                    if (!treeEventsBound) {
+                        // Expand / collapse
+                        $(document).on("click", ".tree-toggle", function () {
+                            const target = $(this).closest("li").children("ul");
+                            if (target.is(":visible")) {
+                                target.slideUp(150);
+                                $(this).text("[+]");
+                            } else {
+                                target.slideDown(150);
+                                $(this).text("[-]");
+                            }
+                        });
+
+                        // Checkbox logic: down + up propagation
+                        $(document).on("change", ".rbac-checkbox", function () {
+                            const checked = this.checked;
+
+                            // Downward: check/uncheck all children
+                            $(this).closest("li").find(".rbac-checkbox").prop("checked", checked);
+
+                            // Upward: check parents if any child is checked
+                            $(this).parents("ul").each(function () {
+                                const parentLi = $(this).closest("li");
+                                const anyChildChecked = $(this).find("> li > input.rbac-checkbox:checked").length > 0;
+                                parentLi.children("input.rbac-checkbox").prop("checked", anyChildChecked);
+                            });
+                        });
+
+                        treeEventsBound = true; // prevent rebinding
+                    }
+                },
+                error: function () {
+                    alert("Failed to load RBAC tree.");
+                }
+            });
+        }
+
+        // 3️⃣ Usage: call when role dropdown changes
+        $("#userRoleSelect").on("change", function () {
+            const roleId = $(this).val();
+            if (roleId) {
+                GetRightofRoleTree(roleId);
+            } else {
+                // Clear tree if no role selected
+                $("#rbacTree").empty();
+                previousRights = [];
+            }
+        });
+
+        $('form').on('submit', function () {
+
+            // clear previous hidden inputs
+            $("#selectedRightsContainer").empty();
+
+            // loop through all checked checkboxes
+            $(".rbac-checkbox:checked").each(function () {
+
+                var id = $(this).val();
+                var label = $(this).next("label").text().trim();
+
+                // Append to form for model binding
+                $("#selectedRightsContainer").append(`
+                    <input type="hidden" name="SelectedRights[index].Id" value="${id}">
+                    <input type="hidden" name="SelectedRights[index].Label" value="${label}">
+                `.replace(/index/g, $("#selectedRightsContainer input").length / 2));
+            });
+
+        });
+
+         
         // Ensure team dropdown is shown/hidden correctly on page load
         document.getElementById("userRoleSelect").dispatchEvent(new Event("change"));
         // document.getElementById("userRoleSelect").addEventListener("change", function () {

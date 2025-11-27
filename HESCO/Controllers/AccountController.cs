@@ -221,11 +221,31 @@ namespace HESCO.Controllers
             using (IDbConnection db = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection")))
             {
                 string query = @"
-                    SELECT  rba.controller, rba.action
-                    FROM  USER u
-                    join roles_permissions r on u.user_role = r.role_id
-                    join rbac_new rba on r.rbac_id = rba.id
-                    WHERE u.id=@UserId";
+SELECT 
+    rn.controller,
+    rn.action
+FROM roles_permissions rp
+INNER JOIN rbac_new rn ON rp.rbac_id = rn.id
+INNER JOIN user_menu_new um 
+    ON um.controller = rn.controller
+    AND um.link LIKE CONCAT('%', rn.action, '%')
+WHERE FIND_IN_SET(@UserId, um.allow_access)
+GROUP BY rn.controller, rn.action;
+";
+
+                //                string query = @"SELECT 
+                //    rn.controller,
+                //    rn.action,
+                //    GROUP_CONCAT(DISTINCT rp.id) AS role_permission_ids,
+                //    GROUP_CONCAT(DISTINCT um.id) AS menu_ids
+                //FROM roles_permissions AS rp
+                //INNER JOIN rbac_new AS rn 
+                //       ON rp.rbac_id = rn.id
+                //JOIN user_menu_new AS um
+                //       ON um.controller = rn.controller
+                //      AND um.link LIKE CONCAT('%', rn.action, '%')
+                //WHERE FIND_IN_SET(@UserId, um.allow_access)
+                //GROUP BY rn.controller, rn.action;";
 
                 var data = await db.QueryAsync<ActionInfo>(query, new { UserId = userId });
                 return data.ToList();               

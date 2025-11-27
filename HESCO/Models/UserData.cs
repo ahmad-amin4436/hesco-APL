@@ -34,7 +34,14 @@ namespace HESCO.Models
         public string? Team { get; set; }    
         public int? CreatedAt { get; set; }
         public int? UpdatedAt { get; set; }
-        public List<int> SelectedRights { get; set; } = new List<int>();
+        public List<RbacSelection> SelectedRights { get; set; } = new List<RbacSelection>();
 
+        public List<int> SelectedActions { get; set; } = new List<int>();
+
+    }
+    public class RbacSelection
+    {
+        public int Id { get; set; }
+        public string Label { get; set; }
     }
 }

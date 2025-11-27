@@ -6,13 +6,15 @@
 }
 @inject MenuService MenuService
 @using Microsoft.AspNetCore.Http
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor HttpContextAccessor
 @using Newtonsoft.Json
 
 @{
     // 🔁 Replace this with how your app actually stores the user's role ID.
     // For example, from claims or session:
-    int roleId = int.Parse(User.FindFirst("role_id")?.Value ?? "0");
-    var menuItems = await MenuService.GetMenuItemsAsync(roleId);
+    //int roleId = int.Parse(User.FindFirst("role_id")?.Value ?? "0");
+    int userId = HttpContextAccessor.HttpContext.Session.GetInt32("UserId") ?? 0;
+    var menuItems = await MenuService.GetMenuItemsAsync(userId);
 
 
 

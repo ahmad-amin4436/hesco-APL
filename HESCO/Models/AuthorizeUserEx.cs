@@ -16,7 +16,7 @@ namespace HESCO.Models
         {
             bool isAllowed = false;
             var permissions = context.HttpContext.Session.GetString("UserPermissions");
-            if (context.HttpContext.User.Identity.IsAuthenticated && !string.IsNullOrEmpty(permissions))
+            if (context.HttpContext.User.Identity.IsAuthenticated && (!string.IsNullOrEmpty(permissions) || permissions.Trim() != "{}"))
             {
                 var userPermissions = JsonConvert.DeserializeObject<Dictionary<string, List<string>>>(permissions);
                 if (userPermissions != null)
