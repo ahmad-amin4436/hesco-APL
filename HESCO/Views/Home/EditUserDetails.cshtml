@@ -91,52 +91,63 @@
         await Html.RenderPartialAsync("_ValidationScriptsPartial");
     }
     <script>
-                document.getElementById("userRoleSelect").addEventListener("change", function () {
-                var selectedRole = this.options[this.selectedIndex].text.toLowerCase();
-                var teamDropdown = document.getElementById("teamDropdown");
-                 var selectedRoleId = this.value; // Get selected role ID
-                 if(!selectedRoleId){
-            }
-            else{
-                 ShowRoleRights(selectedRoleId);
-                // ShowActionRights(selectedRoleId);
-            }
-              
-                     
-                if (selectedRole === "team lead" || selectedRole === "team member") {
-                    teamDropdown.style.display = "block";
-                } else {
-                    teamDropdown.style.display = "none";
-                    // Clear the team selection if the role is not "Team Lead" or "Team Member"
-                    document.getElementById("teamDropdown").querySelector("select").selectedIndex = -1;
+            var previousRights = @Html.Raw(Json.Serialize(ViewBag.UserPreviousRights ?? new List<int>()));
+            sessionStorage.setItem("previousRights",previousRights);
+                    $("#userRoleSelect").on("change", function () {
+
+                        const selectedRole = $("#userRoleSelect option:selected").text().toLowerCase();
+                        const roleId = $(this).val();
+
+                        // Team dropdown logic
+                        if (selectedRole === "team lead" || selectedRole === "team member") {
+                            $("#teamDropdown").show();
+                        } else {
+                            $("#teamDropdown").hide().find("select").prop("selectedIndex", -1);
+                        }
+
+                        // RBAC logic
+                        if (roleId) {
+                            GetRightofRoleTree(roleId);
+                        } else {
+                            $("#rbacTree").empty();
+                            previousRights = [];
+                        }
+                    });
+                    let RolesRights = [];
+          // 1️⃣ Fetch assigned RBAC IDs for the selected role
+        function GetRightofRoleTree(role_id) {
+            $.ajax({
+                url: '@Url.Action("GetRightofRoleTree", "Home")',
+                type: 'GET',
+                data: { role_id: role_id },
+                success: function (data) {
+                    // Convert all IDs to number for safe comparison
+                    RolesRights = data.assignedIds.map(Number);
+                    if('@ViewBag.UserRole' === role_id){
+                        previousRights = sessionStorage.getItem("previousRights");
+                    }
+                    else{
+                        previousRights = '';
+
+                    }
+                                ShowRoleRights(); // correct
+
+                    // Render the tree after fetching assigned rights
+                   // ShowRoleRights();
+                },
+                error: function () {
+                    alert("Failed to load role rights.");
                 }
             });
-                     $(document).ready(function() {
-            // Trigger when role dropdown changes
-            $('#userRoleSelect').on('change', function() {
-                var selectedRoleId = $(this).val();
-
-                if (!selectedRoleId) {
-                    // Hide rights dropdown if no role selected
-
-                    $('#userRightsSelect').empty();
-                    return;
-                }
-
-                // Show and populate rights dropdown
-                ShowRoleRights(selectedRoleId);
-            });
-        });
-
+        }
       
         let treeEventsBound = false;   // prevents double binding
 
-        function ShowRoleRights(roleId) {
+        function ShowRoleRights() {
 
             $.ajax({
                 url: '@Url.Action("GetUserRbacTree", "Home")',
                 type: 'GET',
-                data: { role_id: roleId },
                 success: function (data) {
 
                     /* ---------- BUILD TREE MAP ---------- */
@@ -155,7 +166,6 @@
                             roots.push(item);
                         }
                     });
-                        var previousRights = @Html.Raw(Json.Serialize(ViewBag.UserPreviousRights ?? new List<int>()));
                     /* ---------- RENDER TREE ---------- */
                           function renderTree(nodes) {
             let html = "<ul>";
@@ -164,19 +174,30 @@
                 const hasChildren = node.children.length > 0;
 
                 // Parent → controller | Child → action
-                const label = !node.parent_id
+                let label = !node.parent_id
                     ? (node.controller || "")
                     : (node.action || "");
-
                 // Determine if checkbox should be checked
-                const isChecked = previousRights.includes(node.id) ? "checked" : "";
+                let isChecked = "";
 
+                if (previousRights.length > 0){
+                   isChecked = previousRights.includes(node.id) ? "checked" : "";
+                }
+                else{
+                    isChecked = RolesRights.includes(node.id) ? "checked" : "";
+                }
+                
+                
                 html += `<li>`;
-
+                
                 // Expand/Collapse icon
-                html += hasChildren
+                html += hasChildren 
                     ? `<span class="tree-toggle">[+]</span>`
                     : `<span class="tree-spacer"></span>`;
+                       if (label === 'Home') {
+                        debugger;
+                        label = 'Users';
+                    }
 
                 // Checkbox + Label
                 html += `
@@ -264,8 +285,10 @@
 
         });
 
-
+                $(document).ready(function () {
+            ShowRoleRights(); // Load initial rights from ViewBag
+        });
             // Trigger the change event on page load to set the initial visibility
-            document.getElementById("userRoleSelect").dispatchEvent(new Event("change"));
+            //document.getElementById("userRoleSelect").dispatchEvent(new Event("change"));
         </script>
 }

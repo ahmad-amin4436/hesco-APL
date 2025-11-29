@@ -571,7 +571,7 @@ ORDER BY parent_id, id;";
                         }
                         connection.Close();
                     }
-
+                    ViewBag.UserRole = userData.UserRole;
 
                     //Fetch roles
                     using (MySqlCommand command = new MySqlCommand(rolesQuery, connection))

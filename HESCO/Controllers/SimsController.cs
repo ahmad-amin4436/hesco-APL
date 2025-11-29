@@ -17,6 +17,7 @@ using System.Linq;
 
 namespace HESCO.Controllers
 {
+    [AuthorizeUserEx]
     public class SimsController : Controller
     {
         private readonly IConfiguration _configuration;

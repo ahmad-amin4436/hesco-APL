@@ -23,6 +23,6 @@
     var redirectUrl = '@ViewBag.RedirectUrl';
     // Redirect after 5 seconds (5000 milliseconds)
     setTimeout(function() {
-        window.location.href = redirectUrl;
-    }, 3000);
+    window.history.back();
+        }, 3000);
 </script>

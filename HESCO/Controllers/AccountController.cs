@@ -220,17 +220,9 @@ namespace HESCO.Controllers
         {
             using (IDbConnection db = new MySqlConnection(_configuration.GetConnectionString("DefaultConnection")))
             {
-                string query = @"
-SELECT 
-    rn.controller,
-    rn.action
-FROM roles_permissions rp
-INNER JOIN rbac_new rn ON rp.rbac_id = rn.id
-INNER JOIN user_menu_new um 
-    ON um.controller = rn.controller
-    AND um.link LIKE CONCAT('%', rn.action, '%')
-WHERE FIND_IN_SET(@UserId, um.allow_access)
-GROUP BY rn.controller, rn.action;
+                string query = @"SELECT rba.controller, am.action_name as action FROM accurate_hesco_maam.action_master am
+JOIN rbac_new rba ON rba.id = am.action_id
+WHERE user_id = @UserId;
 ";
 
                 //                string query = @"SELECT 
